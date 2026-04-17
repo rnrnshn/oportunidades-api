@@ -1,0 +1,1 @@
+-- Mentorship queries will be added with the first schema-reviewed mentorship implementation.
