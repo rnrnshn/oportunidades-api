@@ -4,7 +4,8 @@
 INSERT INTO users (id, email, password_hash, role, name, avatar_url)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'admin@oportunidades.co.mz', '$2a$10$Oax5cYad3QkN1l6vn0pJ4O5ykwbYArlZdAOeC9J5RNbm2xw3bDwvG', 'admin', 'Admin Oportunidades', NULL),
-  ('22222222-2222-2222-2222-222222222222', 'user@oportunidades.co.mz', '$2a$10$Oax5cYad3QkN1l6vn0pJ4O5ykwbYArlZdAOeC9J5RNbm2xw3bDwvG', 'user', 'Utilizador Demo', NULL)
+  ('22222222-2222-2222-2222-222222222222', 'user@oportunidades.co.mz', '$2a$10$Oax5cYad3QkN1l6vn0pJ4O5ykwbYArlZdAOeC9J5RNbm2xw3bDwvG', 'user', 'Utilizador Demo', NULL),
+  ('99999999-9999-9999-9999-999999999999', 'mentor@oportunidades.co.mz', '$2a$10$Oax5cYad3QkN1l6vn0pJ4O5ykwbYArlZdAOeC9J5RNbm2xw3bDwvG', 'mentor', 'Mentor Demo', NULL)
 ON CONFLICT (email) DO UPDATE
 SET
   password_hash = EXCLUDED.password_hash,
@@ -29,6 +30,18 @@ SET
   verified = EXCLUDED.verified,
   verified_at = EXCLUDED.verified_at,
   created_by = EXCLUDED.created_by,
+  deleted_at = NULL;
+
+INSERT INTO mentor_profiles (id, user_id, headline, bio, expertise, availability, is_active)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '99999999-9999-9999-9999-999999999999', 'Engenheiro de Software e mentor de carreira', 'Profissional com experiencia em desenvolvimento backend, transicao de carreira e preparacao para entrevistas.', 'Go, SQL, APIs, Carreira em Tecnologia', 'Sabados de manha e quartas a noite', TRUE)
+ON CONFLICT (user_id) DO UPDATE
+SET
+  headline = EXCLUDED.headline,
+  bio = EXCLUDED.bio,
+  expertise = EXCLUDED.expertise,
+  availability = EXCLUDED.availability,
+  is_active = EXCLUDED.is_active,
   deleted_at = NULL;
 
 INSERT INTO courses (id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements)

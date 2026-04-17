@@ -15,6 +15,7 @@ import (
 
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	appcatalog "github.com/rnrnshn/oportunidades-api/internal/catalog"
+	appmentorship "github.com/rnrnshn/oportunidades-api/internal/mentorship"
 	appopportunities "github.com/rnrnshn/oportunidades-api/internal/opportunities"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/db"
@@ -110,6 +111,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	catalogRepository := appcatalog.NewPostgresRepository(pool)
 	catalogService := appcatalog.NewService(catalogRepository)
 	catalogHandler := appcatalog.NewHandler(catalogService)
+	mentorshipRepository := appmentorship.NewPostgresRepository(pool)
+	mentorshipService := appmentorship.NewService(mentorshipRepository)
+	mentorshipHandler := appmentorship.NewHandler(mentorshipService)
 	opportunitiesRepository := appopportunities.NewPostgresRepository(pool)
 	opportunitiesService := appopportunities.NewService(opportunitiesRepository)
 	opportunitiesHandler := appopportunities.NewHandler(opportunitiesService)
@@ -126,6 +130,11 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	catalogGroup.Get("/universities/:slug", catalogHandler.GetUniversityBySlug)
 	catalogGroup.Get("/courses", catalogHandler.ListCourses)
 	catalogGroup.Get("/courses/:slug", catalogHandler.GetCourseBySlug)
+
+	mentorshipGroup := v1.Group("/mentorship")
+	mentorshipGroup.Get("/mentors", mentorshipHandler.ListMentors)
+	mentorshipGroup.Get("/mentors/:id", mentorshipHandler.GetMentorByID)
+	mentorshipGroup.Post("/sessions", appauth.RequireAuth(authService), mentorshipHandler.CreateSessionRequest)
 
 	opportunitiesGroup := v1.Group("/opportunities")
 	opportunitiesGroup.Get("", opportunitiesHandler.ListOpportunities)

@@ -117,6 +117,41 @@ CREATE INDEX opportunities_is_active_idx ON opportunities (is_active) WHERE dele
 CREATE INDEX opportunities_verified_idx ON opportunities (verified) WHERE deleted_at IS NULL;
 CREATE INDEX opportunities_deleted_at_idx ON opportunities (deleted_at);
 
+CREATE TABLE mentor_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  headline TEXT NOT NULL,
+  bio TEXT NOT NULL,
+  expertise TEXT NOT NULL,
+  availability TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT mentor_profiles_user_id_unique UNIQUE (user_id)
+);
+
+CREATE INDEX mentor_profiles_user_id_idx ON mentor_profiles (user_id) WHERE deleted_at IS NULL;
+CREATE INDEX mentor_profiles_is_active_idx ON mentor_profiles (is_active) WHERE deleted_at IS NULL;
+CREATE INDEX mentor_profiles_deleted_at_idx ON mentor_profiles (deleted_at);
+
+CREATE TABLE mentorship_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mentor_id UUID NOT NULL REFERENCES users(id),
+  requester_id UUID NOT NULL REFERENCES users(id),
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'completed', 'cancelled')),
+  scheduled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX mentorship_sessions_mentor_id_idx ON mentorship_sessions (mentor_id) WHERE deleted_at IS NULL;
+CREATE INDEX mentorship_sessions_requester_id_idx ON mentorship_sessions (requester_id) WHERE deleted_at IS NULL;
+CREATE INDEX mentorship_sessions_status_idx ON mentorship_sessions (status) WHERE deleted_at IS NULL;
+CREATE INDEX mentorship_sessions_deleted_at_idx ON mentorship_sessions (deleted_at);
+
 CREATE TABLE reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   reporter_id UUID REFERENCES users(id),
@@ -157,6 +192,16 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER opportunities_set_updated_at
 BEFORE UPDATE ON opportunities
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER mentor_profiles_set_updated_at
+BEFORE UPDATE ON mentor_profiles
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER mentorship_sessions_set_updated_at
+BEFORE UPDATE ON mentorship_sessions
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 

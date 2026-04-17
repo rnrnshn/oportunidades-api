@@ -24,6 +24,31 @@ type Course struct {
 	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type MentorProfile struct {
+	ID           pgtype.UUID        `json:"id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	Headline     string             `json:"headline"`
+	Bio          string             `json:"bio"`
+	Expertise    string             `json:"expertise"`
+	Availability pgtype.Text        `json:"availability"`
+	IsActive     bool               `json:"is_active"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type MentorshipSession struct {
+	ID          pgtype.UUID        `json:"id"`
+	MentorID    pgtype.UUID        `json:"mentor_id"`
+	RequesterID pgtype.UUID        `json:"requester_id"`
+	Message     string             `json:"message"`
+	Status      string             `json:"status"`
+	ScheduledAt pgtype.Timestamptz `json:"scheduled_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Opportunity struct {
 	ID           pgtype.UUID        `json:"id"`
 	Slug         string             `json:"slug"`
