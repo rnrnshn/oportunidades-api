@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct {
@@ -35,8 +36,13 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		return apierror.Validation("Payload inválido.", nil)
 	}
 
-	if strings.TrimSpace(request.Name) == "" || strings.TrimSpace(request.Email) == "" || strings.TrimSpace(request.Password) == "" {
-		return apierror.Validation("Nome, email e password são obrigatórios.", nil)
+	validationErrors := validation.New()
+	validationErrors.Required("name", request.Name, "Nome é obrigatório.")
+	validationErrors.Required("email", request.Email, "Email é obrigatório.")
+	validationErrors.Required("password", request.Password, "Password é obrigatória.")
+	validationErrors.MinLength("password", request.Password, 8, "Password deve ter pelo menos 8 caracteres.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
 	}
 
 	result, err := h.service.Register(c.UserContext(), RegisterInput{
@@ -58,8 +64,11 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		return apierror.Validation("Payload inválido.", nil)
 	}
 
-	if strings.TrimSpace(request.Email) == "" || strings.TrimSpace(request.Password) == "" {
-		return apierror.Validation("Email e password são obrigatórios.", nil)
+	validationErrors := validation.New()
+	validationErrors.Required("email", request.Email, "Email é obrigatório.")
+	validationErrors.Required("password", request.Password, "Password é obrigatória.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
 	}
 
 	result, err := h.service.Login(c.UserContext(), LoginInput{

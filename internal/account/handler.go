@@ -8,6 +8,7 @@ import (
 
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct{ service *Service }
@@ -45,6 +46,11 @@ func (h *Handler) UpdateMe(c *fiber.Ctx) error {
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
 	}
+	validationErrors := validation.New()
+	validationErrors.Required("name", request.Name, "Nome é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.UpdateProfile(c.UserContext(), UpdateProfileInput{
 		UserID:    currentUser.ID,
 		Name:      strings.TrimSpace(request.Name),
@@ -65,6 +71,13 @@ func (h *Handler) ChangePassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
 	}
+	validationErrors := validation.New()
+	validationErrors.Required("current_password", request.CurrentPassword, "Password actual é obrigatória.")
+	validationErrors.Required("new_password", request.NewPassword, "Nova password é obrigatória.")
+	validationErrors.MinLength("new_password", request.NewPassword, 8, "A nova password deve ter pelo menos 8 caracteres.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ChangePassword(c.UserContext(), ChangePasswordInput{
 		UserID:          currentUser.ID,
 		CurrentPassword: strings.TrimSpace(request.CurrentPassword),
@@ -80,14 +93,8 @@ func handleError(err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return apierror.NotFound("Conta não encontrada.")
 	}
-	if strings.Contains(err.Error(), "name is required") {
-		return apierror.Validation("Nome é obrigatório.", nil)
-	}
 	if strings.Contains(err.Error(), "current and new passwords are required") {
-		return apierror.Validation("current_password e new_password são obrigatórios.", nil)
-	}
-	if strings.Contains(err.Error(), "new password must be at least 8 characters") {
-		return apierror.Validation("A nova password deve ter pelo menos 8 caracteres.", nil)
+		return apierror.Validation("Dados inválidos.", nil)
 	}
 	if strings.Contains(err.Error(), "current password is invalid") {
 		return apierror.Unauthorized("Password actual inválida.")

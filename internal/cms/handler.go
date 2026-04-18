@@ -7,6 +7,7 @@ import (
 
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct{ service *Service }
@@ -48,6 +49,13 @@ func (h *Handler) CreateArticle(c *fiber.Ctx) error {
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
 	}
+	validationErrors := validation.New()
+	validationErrors.Required("title", request.Title, "Título é obrigatório.")
+	validationErrors.Required("content", request.Content, "Conteúdo é obrigatório.")
+	validationErrors.Required("type", request.Type, "Tipo é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
 	result, err := h.service.CreateArticle(c.UserContext(), CreateArticleInput{
 		AuthorID: currentUser.ID,
 		Title:    strings.TrimSpace(request.Title), Excerpt: strings.TrimSpace(request.Excerpt), Content: strings.TrimSpace(request.Content), CoverImageURL: strings.TrimSpace(request.CoverImageURL),
@@ -67,6 +75,15 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 	var request createOpportunityRequest
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("title", request.Title, "Título é obrigatório.")
+	validationErrors.Required("type", request.Type, "Tipo é obrigatório.")
+	validationErrors.Required("entity_name", request.EntityName, "Entidade é obrigatória.")
+	validationErrors.Required("description", request.Description, "Descrição é obrigatória.")
+	validationErrors.Required("country", request.Country, "País é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
 	result, err := h.service.CreateOpportunity(c.UserContext(), CreateOpportunityInput{
 		PublishedBy: currentUser.ID,
