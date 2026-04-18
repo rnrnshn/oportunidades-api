@@ -65,6 +65,23 @@ WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
 
+-- name: RejectOpportunity :one
+UPDATE opportunities
+SET
+  verified = FALSE,
+  is_active = FALSE
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
+-- name: DeactivateOpportunity :one
+UPDATE opportunities
+SET
+  is_active = FALSE
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: UpdateOpportunity :one
 UPDATE opportunities
 SET

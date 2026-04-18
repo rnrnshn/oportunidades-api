@@ -11,6 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveArticle = `-- name: ArchiveArticle :one
+UPDATE articles
+SET
+  status = 'archived'
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
+	row := q.db.QueryRow(ctx, archiveArticle, id)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const countArticles = `-- name: CountArticles :one
 SELECT COUNT(*)
 FROM articles
@@ -315,6 +350,42 @@ RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, sour
 
 func (q *Queries) PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
 	row := q.db.QueryRow(ctx, publishArticle, id)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const unpublishArticle = `-- name: UnpublishArticle :one
+UPDATE articles
+SET
+  status = 'draft',
+  published_at = NULL
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
+	row := q.db.QueryRow(ctx, unpublishArticle, id)
 	var i Article
 	err := row.Scan(
 		&i.ID,

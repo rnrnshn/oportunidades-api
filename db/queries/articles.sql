@@ -66,6 +66,23 @@ WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
 
+-- name: UnpublishArticle :one
+UPDATE articles
+SET
+  status = 'draft',
+  published_at = NULL
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
+-- name: ArchiveArticle :one
+UPDATE articles
+SET
+  status = 'archived'
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: UpdateArticle :one
 UPDATE articles
 SET

@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	ConsumeAuthActionToken(ctx context.Context, id pgtype.UUID) error
 	CountArticles(ctx context.Context) (int64, error)
 	CountCMSArticles(ctx context.Context) (int64, error)
@@ -31,6 +32,7 @@ type Querier interface {
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateUniversity(ctx context.Context, arg CreateUniversityParams) (University, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error)
 	GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, error)
 	GetArticleBySlug(ctx context.Context, slug string) (Article, error)
@@ -58,8 +60,10 @@ type Querier interface {
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
+	RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	UpdateArticle(ctx context.Context, arg UpdateArticleParams) (Article, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateOpportunity(ctx context.Context, arg UpdateOpportunityParams) (Opportunity, error)

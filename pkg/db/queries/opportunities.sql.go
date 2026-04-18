@@ -130,6 +130,41 @@ func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityPa
 	return i, err
 }
 
+const deactivateOpportunity = `-- name: DeactivateOpportunity :one
+UPDATE opportunities
+SET
+  is_active = FALSE
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, deactivateOpportunity, id)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getOpportunityByID = `-- name: GetOpportunityByID :one
 SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
 FROM opportunities
@@ -298,6 +333,42 @@ func (q *Queries) ListOpportunities(ctx context.Context, arg ListOpportunitiesPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const rejectOpportunity = `-- name: RejectOpportunity :one
+UPDATE opportunities
+SET
+  verified = FALSE,
+  is_active = FALSE
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, rejectOpportunity, id)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const updateOpportunity = `-- name: UpdateOpportunity :one
