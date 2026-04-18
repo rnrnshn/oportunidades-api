@@ -22,9 +22,11 @@ import (
 	appmentorship "github.com/rnrnshn/oportunidades-api/internal/mentorship"
 	appopportunities "github.com/rnrnshn/oportunidades-api/internal/opportunities"
 	appreports "github.com/rnrnshn/oportunidades-api/internal/reports"
+	appuploads "github.com/rnrnshn/oportunidades-api/internal/uploads"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/db"
 	appmiddleware "github.com/rnrnshn/oportunidades-api/pkg/middleware"
+	appstorage "github.com/rnrnshn/oportunidades-api/pkg/storage"
 )
 
 func main() {
@@ -139,6 +141,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	reportsRepository := appreports.NewPostgresRepository(pool)
 	reportsService := appreports.NewService(reportsRepository)
 	reportsHandler := appreports.NewHandler(reportsService)
+	storageClient := appstorage.NewSupabaseClient(getEnv("SUPABASE_URL", ""), getEnv("SUPABASE_STORAGE_BUCKET", ""), getEnv("SUPABASE_SERVICE_ROLE_KEY", ""))
+	uploadsService := appuploads.NewService(storageClient)
+	uploadsHandler := appuploads.NewHandler(uploadsService)
 
 	v1 := app.Group("/v1")
 	authGroup := v1.Group("/auth")
@@ -210,6 +215,10 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 
 	reportsGroup := v1.Group("/reports", appauth.RequireAuth(authService))
 	reportsGroup.Post("", reportsHandler.Create)
+
+	uploadsGroup := v1.Group("/uploads", appauth.RequireAuth(authService))
+	uploadsGroup.Post("/presign", uploadsHandler.Presign)
+	uploadsGroup.Post("/confirm", uploadsHandler.Confirm)
 }
 
 func getEnvAsInt(key string, fallback int) int {
