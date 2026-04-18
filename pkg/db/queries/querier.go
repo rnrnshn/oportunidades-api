@@ -16,12 +16,16 @@ type Querier interface {
 	CountMentors(ctx context.Context) (int64, error)
 	CountOpportunities(ctx context.Context) (int64, error)
 	CountUniversities(ctx context.Context) (int64, error)
+	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
 	CreateMentorshipSession(ctx context.Context, arg CreateMentorshipSessionParams) (MentorshipSession, error)
+	CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, error)
 	GetArticleBySlug(ctx context.Context, slug string) (Article, error)
 	GetCourseBySlug(ctx context.Context, slug string) (Course, error)
 	GetMentorByID(ctx context.Context, userID pgtype.UUID) (GetMentorByIDRow, error)
+	GetOpportunityByID(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	GetOpportunityBySlug(ctx context.Context, slug string) (Opportunity, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetUniversityBySlug(ctx context.Context, slug string) (University, error)
@@ -32,8 +36,10 @@ type Querier interface {
 	ListMentors(ctx context.Context, arg ListMentorsParams) ([]ListMentorsRow, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
+	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
+	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 }
 
 var _ Querier = (*Queries)(nil)

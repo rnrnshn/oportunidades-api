@@ -7,6 +7,8 @@ package queries
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countOpportunities = `-- name: CountOpportunities :one
@@ -20,6 +22,132 @@ func (q *Queries) CountOpportunities(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const createOpportunity = `-- name: CreateOpportunity :one
+INSERT INTO opportunities (
+  slug,
+  title,
+  type,
+  entity_name,
+  description,
+  requirements,
+  deadline,
+  apply_url,
+  country,
+  language,
+  area,
+  is_active,
+  published_by,
+  verified
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  $10,
+  $11,
+  $12,
+  $13,
+  $14
+)
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+`
+
+type CreateOpportunityParams struct {
+	Slug         string             `json:"slug"`
+	Title        string             `json:"title"`
+	Type         string             `json:"type"`
+	EntityName   string             `json:"entity_name"`
+	Description  string             `json:"description"`
+	Requirements pgtype.Text        `json:"requirements"`
+	Deadline     pgtype.Timestamptz `json:"deadline"`
+	ApplyUrl     pgtype.Text        `json:"apply_url"`
+	Country      string             `json:"country"`
+	Language     pgtype.Text        `json:"language"`
+	Area         pgtype.Text        `json:"area"`
+	IsActive     bool               `json:"is_active"`
+	PublishedBy  pgtype.UUID        `json:"published_by"`
+	Verified     bool               `json:"verified"`
+}
+
+func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, createOpportunity,
+		arg.Slug,
+		arg.Title,
+		arg.Type,
+		arg.EntityName,
+		arg.Description,
+		arg.Requirements,
+		arg.Deadline,
+		arg.ApplyUrl,
+		arg.Country,
+		arg.Language,
+		arg.Area,
+		arg.IsActive,
+		arg.PublishedBy,
+		arg.Verified,
+	)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getOpportunityByID = `-- name: GetOpportunityByID :one
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+FROM opportunities
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, getOpportunityByID, id)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getOpportunityBySlug = `-- name: GetOpportunityBySlug :one
@@ -105,4 +233,40 @@ func (q *Queries) ListOpportunities(ctx context.Context, arg ListOpportunitiesPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const verifyOpportunity = `-- name: VerifyOpportunity :one
+UPDATE opportunities
+SET
+  verified = TRUE,
+  is_active = TRUE
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, verifyOpportunity, id)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }

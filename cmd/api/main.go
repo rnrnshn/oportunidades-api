@@ -14,9 +14,11 @@ import (
 	"github.com/rs/zerolog"
 
 	appaccount "github.com/rnrnshn/oportunidades-api/internal/account"
+	appadmin "github.com/rnrnshn/oportunidades-api/internal/admin"
 	apparticles "github.com/rnrnshn/oportunidades-api/internal/articles"
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	appcatalog "github.com/rnrnshn/oportunidades-api/internal/catalog"
+	appcms "github.com/rnrnshn/oportunidades-api/internal/cms"
 	appmentorship "github.com/rnrnshn/oportunidades-api/internal/mentorship"
 	appopportunities "github.com/rnrnshn/oportunidades-api/internal/opportunities"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
@@ -113,12 +115,18 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	accountRepository := appaccount.NewPostgresRepository(pool)
 	accountService := appaccount.NewService(accountRepository)
 	accountHandler := appaccount.NewHandler(accountService)
+	adminRepository := appadmin.NewPostgresRepository(pool)
+	adminService := appadmin.NewService(adminRepository)
+	adminHandler := appadmin.NewHandler(adminService)
 	articlesRepository := apparticles.NewPostgresRepository(pool)
 	articlesService := apparticles.NewService(articlesRepository)
 	articlesHandler := apparticles.NewHandler(articlesService)
 	catalogRepository := appcatalog.NewPostgresRepository(pool)
 	catalogService := appcatalog.NewService(catalogRepository)
 	catalogHandler := appcatalog.NewHandler(catalogService)
+	cmsRepository := appcms.NewPostgresRepository(pool)
+	cmsService := appcms.NewService(cmsRepository)
+	cmsHandler := appcms.NewHandler(cmsService)
 	mentorshipRepository := appmentorship.NewPostgresRepository(pool)
 	mentorshipService := appmentorship.NewService(mentorshipRepository)
 	mentorshipHandler := appmentorship.NewHandler(mentorshipService)
@@ -136,6 +144,14 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	accountGroup := v1.Group("/account", appauth.RequireAuth(authService))
 	accountGroup.Get("/me", accountHandler.GetMe)
 	accountGroup.Patch("/me", accountHandler.UpdateMe)
+
+	cmsGroup := v1.Group("/cms", appauth.RequireRole(authService, "cms_partner", "admin"))
+	cmsGroup.Post("/articles", cmsHandler.CreateArticle)
+	cmsGroup.Post("/opportunities", cmsHandler.CreateOpportunity)
+
+	adminGroup := v1.Group("/admin", appauth.RequireRole(authService, "admin"))
+	adminGroup.Post("/articles/:id/publish", adminHandler.PublishArticle)
+	adminGroup.Post("/opportunities/:id/verify", adminHandler.VerifyOpportunity)
 
 	articlesGroup := v1.Group("/articles")
 	articlesGroup.Get("", articlesHandler.ListArticles)

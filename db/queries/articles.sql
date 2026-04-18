@@ -5,6 +5,55 @@ WHERE slug = $1
   AND status = 'published'
   AND deleted_at IS NULL;
 
+-- name: GetArticleByID :one
+SELECT *
+FROM articles
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: CreateArticle :one
+INSERT INTO articles (
+  slug,
+  title,
+  excerpt,
+  content,
+  cover_image_url,
+  type,
+  status,
+  source_name,
+  source_url,
+  seo_title,
+  seo_description,
+  is_featured,
+  author_id,
+  published_at
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  $10,
+  $11,
+  $12,
+  $13,
+  $14
+)
+RETURNING *;
+
+-- name: PublishArticle :one
+UPDATE articles
+SET
+  status = 'published',
+  published_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: ListArticles :many
 SELECT *
 FROM articles

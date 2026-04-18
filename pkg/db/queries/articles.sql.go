@@ -7,6 +7,8 @@ package queries
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countArticles = `-- name: CountArticles :one
@@ -21,6 +23,132 @@ func (q *Queries) CountArticles(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const createArticle = `-- name: CreateArticle :one
+INSERT INTO articles (
+  slug,
+  title,
+  excerpt,
+  content,
+  cover_image_url,
+  type,
+  status,
+  source_name,
+  source_url,
+  seo_title,
+  seo_description,
+  is_featured,
+  author_id,
+  published_at
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  $10,
+  $11,
+  $12,
+  $13,
+  $14
+)
+RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+`
+
+type CreateArticleParams struct {
+	Slug           string             `json:"slug"`
+	Title          string             `json:"title"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImageUrl  pgtype.Text        `json:"cover_image_url"`
+	Type           string             `json:"type"`
+	Status         string             `json:"status"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SeoTitle       pgtype.Text        `json:"seo_title"`
+	SeoDescription pgtype.Text        `json:"seo_description"`
+	IsFeatured     bool               `json:"is_featured"`
+	AuthorID       pgtype.UUID        `json:"author_id"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error) {
+	row := q.db.QueryRow(ctx, createArticle,
+		arg.Slug,
+		arg.Title,
+		arg.Excerpt,
+		arg.Content,
+		arg.CoverImageUrl,
+		arg.Type,
+		arg.Status,
+		arg.SourceName,
+		arg.SourceUrl,
+		arg.SeoTitle,
+		arg.SeoDescription,
+		arg.IsFeatured,
+		arg.AuthorID,
+		arg.PublishedAt,
+	)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getArticleByID = `-- name: GetArticleByID :one
+SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+FROM articles
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, error) {
+	row := q.db.QueryRow(ctx, getArticleByID, id)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const getArticleBySlug = `-- name: GetArticleBySlug :one
@@ -108,4 +236,40 @@ func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]A
 		return nil, err
 	}
 	return items, nil
+}
+
+const publishArticle = `-- name: PublishArticle :one
+UPDATE articles
+SET
+  status = 'published',
+  published_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
+	row := q.db.QueryRow(ctx, publishArticle, id)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
