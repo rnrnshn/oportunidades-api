@@ -60,3 +60,17 @@ func TestHandlerUpdateReportStatus(t *testing.T) {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerListReportsValidatesQuery(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/admin/reports", handler.ListReports)
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/reports?status=bad&entity_type=bad&sort=nope", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}

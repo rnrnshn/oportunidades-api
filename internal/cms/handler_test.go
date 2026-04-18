@@ -249,3 +249,39 @@ func TestHandlerGetArticleForbiddenForOtherCmsPartner(t *testing.T) {
 		t.Fatalf("expected 403, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerListArticlesValidatesQuery(t *testing.T) {
+	userID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/cms/articles", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "admin"})
+		return handler.ListArticles(c)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/cms/articles?type=bad&featured=maybe&sort=nope", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerListCoursesValidatesQuery(t *testing.T) {
+	userID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/cms/courses", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "admin"})
+		return handler.ListCourses(c)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/cms/courses?level=bad&university_id=nope&sort=nope", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}

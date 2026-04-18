@@ -74,6 +74,16 @@ func (h *Handler) ListArticles(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("type", c.Query("type"), []string{"editorial", "news", "guide"}, "type deve ser editorial, news ou guide.")
+	validationErrors.Enum("status", c.Query("status"), []string{"draft", "in_review", "published", "archived"}, "status inválido.")
+	validationErrors.Bool("featured", c.Query("featured"), "featured deve ser true ou false.")
+	validationErrors.Enum("sort", c.Query("sort"), []string{"title_asc", "title_desc", "created_at_asc"}, "sort inválido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListArticles(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, ArticleListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Status: strings.TrimSpace(c.Query("status")), Featured: queryBool(c, "featured"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
@@ -160,6 +170,15 @@ func (h *Handler) ListUniversities(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("type", c.Query("type"), []string{"publica", "privada", "instituto", "academia"}, "type deve ser publica, privada, instituto ou academia.")
+	validationErrors.Bool("verified", c.Query("verified"), "verified deve ser true ou false.")
+	validationErrors.Enum("sort", c.Query("sort"), []string{"name_asc", "name_desc", "created_at_asc"}, "sort inválido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListUniversities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, UniversityListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Province: strings.TrimSpace(c.Query("province")), Verified: queryBool(c, "verified"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
@@ -234,6 +253,16 @@ func (h *Handler) ListCourses(c *fiber.Ctx) error {
 	currentUser, ok := appauth.CurrentUser(c)
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
+	}
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("level", c.Query("level"), []string{"licenciatura", "mestrado", "doutoramento", "tecnico_medio", "cet"}, "level inválido.")
+	validationErrors.Enum("regime", c.Query("regime"), []string{"presencial", "distancia", "misto"}, "regime inválido.")
+	validationErrors.UUID("university_id", c.Query("university_id"), "university_id deve ser um UUID válido.")
+	validationErrors.Enum("sort", c.Query("sort"), []string{"name_asc", "name_desc", "created_at_asc"}, "sort inválido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
 	}
 	result, err := h.service.ListCourses(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, CourseListFilters{Query: strings.TrimSpace(c.Query("q")), Area: strings.TrimSpace(c.Query("area")), Level: strings.TrimSpace(c.Query("level")), Regime: strings.TrimSpace(c.Query("regime")), UniversityID: strings.TrimSpace(c.Query("university_id")), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
@@ -313,6 +342,16 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 	currentUser, ok := appauth.CurrentUser(c)
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
+	}
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("type", c.Query("type"), []string{"bolsa", "estagio", "emprego", "intercambio", "workshop", "competicao"}, "type inválido.")
+	validationErrors.Bool("verified", c.Query("verified"), "verified deve ser true ou false.")
+	validationErrors.Bool("active", c.Query("active"), "active deve ser true ou false.")
+	validationErrors.Enum("sort", c.Query("sort"), []string{"title_asc", "title_desc", "deadline_asc"}, "sort inválido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
 	}
 	result, err := h.service.ListOpportunities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, OpportunityListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Verified: queryBool(c, "verified"), Active: queryBool(c, "active"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
