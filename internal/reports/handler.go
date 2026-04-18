@@ -50,6 +50,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 }
 
 func handleError(err error) error {
+	if strings.Contains(err.Error(), "entity does not exist") || strings.Contains(err.Error(), "invalid entity type") {
+		return apierror.Validation("Entidade denunciada não existe ou é inválida.", nil)
+	}
 	if strings.Contains(err.Error(), "invalid ") {
 		return apierror.Validation("Dados inválidos para denúncia.", nil)
 	}

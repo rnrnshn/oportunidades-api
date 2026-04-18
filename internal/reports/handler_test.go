@@ -18,10 +18,22 @@ import (
 
 type mockRepository struct {
 	createReportFn func(context.Context, queries.CreateReportParams) (queries.Report, error)
+	reportUniversityExistsFn func(context.Context, pgtype.UUID) (bool, error)
+	reportCourseExistsFn func(context.Context, pgtype.UUID) (bool, error)
+	reportOpportunityExistsFn func(context.Context, pgtype.UUID) (bool, error)
 }
 
 func (m *mockRepository) CreateReport(ctx context.Context, params queries.CreateReportParams) (queries.Report, error) {
 	return m.createReportFn(ctx, params)
+}
+func (m *mockRepository) ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	return m.reportUniversityExistsFn(ctx, id)
+}
+func (m *mockRepository) ReportCourseExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	return m.reportCourseExistsFn(ctx, id)
+}
+func (m *mockRepository) ReportOpportunityExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	return m.reportOpportunityExistsFn(ctx, id)
 }
 
 func TestHandlerCreateReport(t *testing.T) {
@@ -30,7 +42,7 @@ func TestHandlerCreateReport(t *testing.T) {
 	entityID := uuid.New()
 	handler := NewHandler(NewService(&mockRepository{createReportFn: func(context.Context, queries.CreateReportParams) (queries.Report, error) {
 		return queries.Report{ID: pgtype.UUID{Bytes: [16]byte(reportID), Valid: true}, ReporterID: pgtype.UUID{Bytes: [16]byte(reporterID), Valid: true}, EntityType: "course", EntityID: pgtype.UUID{Bytes: [16]byte(entityID), Valid: true}, Reason: "Informação antiga", Status: "pending"}, nil
-	}}))
+	}, reportCourseExistsFn: func(context.Context, pgtype.UUID) (bool, error) { return true, nil }}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
 	app.Post("/v1/reports", func(c *fiber.Ctx) error {
 		c.Locals("auth_user", appauth.AuthenticatedUser{ID: reporterID.String(), Role: "user"})

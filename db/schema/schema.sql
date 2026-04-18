@@ -208,6 +208,8 @@ CREATE TABLE reports (
   entity_id UUID NOT NULL,
   reason TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+  reviewed_by UUID REFERENCES users(id),
+  moderation_notes TEXT,
   resolved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -215,6 +217,7 @@ CREATE TABLE reports (
 );
 
 CREATE INDEX reports_reporter_id_idx ON reports (reporter_id) WHERE deleted_at IS NULL;
+CREATE INDEX reports_reviewed_by_idx ON reports (reviewed_by) WHERE deleted_at IS NULL;
 CREATE INDEX reports_entity_lookup_idx ON reports (entity_type, entity_id) WHERE deleted_at IS NULL;
 CREATE INDEX reports_status_idx ON reports (status) WHERE deleted_at IS NULL;
 CREATE INDEX reports_deleted_at_idx ON reports (deleted_at);

@@ -31,6 +31,8 @@ INSERT INTO reports (
   entity_id,
   reason,
   status,
+  reviewed_by,
+  moderation_notes,
   resolved_at
 ) VALUES (
   $1,
@@ -38,9 +40,11 @@ INSERT INTO reports (
   $3,
   $4,
   'pending',
+  NULL,
+  NULL,
   NULL
 )
-RETURNING id, reporter_id, entity_type, entity_id, reason, status, resolved_at, created_at, updated_at, deleted_at
+RETURNING id, reporter_id, entity_type, entity_id, reason, status, reviewed_by, moderation_notes, resolved_at, created_at, updated_at, deleted_at
 `
 
 type CreateReportParams struct {
@@ -65,6 +69,8 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 		&i.EntityID,
 		&i.Reason,
 		&i.Status,
+		&i.ReviewedBy,
+		&i.ModerationNotes,
 		&i.ResolvedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -74,7 +80,7 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 }
 
 const getReportByID = `-- name: GetReportByID :one
-SELECT id, reporter_id, entity_type, entity_id, reason, status, resolved_at, created_at, updated_at, deleted_at
+SELECT id, reporter_id, entity_type, entity_id, reason, status, reviewed_by, moderation_notes, resolved_at, created_at, updated_at, deleted_at
 FROM reports
 WHERE id = $1
   AND deleted_at IS NULL
@@ -90,6 +96,8 @@ func (q *Queries) GetReportByID(ctx context.Context, id pgtype.UUID) (Report, er
 		&i.EntityID,
 		&i.Reason,
 		&i.Status,
+		&i.ReviewedBy,
+		&i.ModerationNotes,
 		&i.ResolvedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -99,7 +107,7 @@ func (q *Queries) GetReportByID(ctx context.Context, id pgtype.UUID) (Report, er
 }
 
 const listReports = `-- name: ListReports :many
-SELECT id, reporter_id, entity_type, entity_id, reason, status, resolved_at, created_at, updated_at, deleted_at
+SELECT id, reporter_id, entity_type, entity_id, reason, status, reviewed_by, moderation_notes, resolved_at, created_at, updated_at, deleted_at
 FROM reports
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -127,6 +135,8 @@ func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Rep
 			&i.EntityID,
 			&i.Reason,
 			&i.Status,
+			&i.ReviewedBy,
+			&i.ModerationNotes,
 			&i.ResolvedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -142,23 +152,77 @@ func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Rep
 	return items, nil
 }
 
+const reportCourseExists = `-- name: ReportCourseExists :one
+SELECT EXISTS(
+  SELECT 1 FROM courses
+  WHERE id = $1
+    AND deleted_at IS NULL
+)
+`
+
+func (q *Queries) ReportCourseExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, reportCourseExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const reportOpportunityExists = `-- name: ReportOpportunityExists :one
+SELECT EXISTS(
+  SELECT 1 FROM opportunities
+  WHERE id = $1
+    AND deleted_at IS NULL
+)
+`
+
+func (q *Queries) ReportOpportunityExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, reportOpportunityExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const reportUniversityExists = `-- name: ReportUniversityExists :one
+SELECT EXISTS(
+  SELECT 1 FROM universities
+  WHERE id = $1
+    AND deleted_at IS NULL
+)
+`
+
+func (q *Queries) ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, reportUniversityExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const updateReportStatus = `-- name: UpdateReportStatus :one
 UPDATE reports
 SET
   status = $2,
+  reviewed_by = $3,
+  moderation_notes = $4,
   resolved_at = CASE WHEN $2 IN ('resolved', 'dismissed') THEN NOW() ELSE NULL END
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, reporter_id, entity_type, entity_id, reason, status, resolved_at, created_at, updated_at, deleted_at
+RETURNING id, reporter_id, entity_type, entity_id, reason, status, reviewed_by, moderation_notes, resolved_at, created_at, updated_at, deleted_at
 `
 
 type UpdateReportStatusParams struct {
-	ID     pgtype.UUID `json:"id"`
-	Status string      `json:"status"`
+	ID              pgtype.UUID `json:"id"`
+	Status          string      `json:"status"`
+	ReviewedBy      pgtype.UUID `json:"reviewed_by"`
+	ModerationNotes pgtype.Text `json:"moderation_notes"`
 }
 
 func (q *Queries) UpdateReportStatus(ctx context.Context, arg UpdateReportStatusParams) (Report, error) {
-	row := q.db.QueryRow(ctx, updateReportStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateReportStatus,
+		arg.ID,
+		arg.Status,
+		arg.ReviewedBy,
+		arg.ModerationNotes,
+	)
 	var i Report
 	err := row.Scan(
 		&i.ID,
@@ -167,6 +231,8 @@ func (q *Queries) UpdateReportStatus(ctx context.Context, arg UpdateReportStatus
 		&i.EntityID,
 		&i.Reason,
 		&i.Status,
+		&i.ReviewedBy,
+		&i.ModerationNotes,
 		&i.ResolvedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

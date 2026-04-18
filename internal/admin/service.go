@@ -58,6 +58,8 @@ type PaginationMeta struct {
 type UpdateReportStatusInput struct {
 	ReportID string
 	Status   string
+	ReviewedBy string
+	ModerationNotes string
 }
 
 type ArticleItem struct {
@@ -83,6 +85,8 @@ type ReportItem struct {
 	EntityID   string `json:"entity_id"`
 	Reason     string `json:"reason"`
 	Status     string `json:"status"`
+	ReviewedBy string `json:"reviewed_by,omitempty"`
+	ModerationNotes string `json:"moderation_notes,omitempty"`
 	ResolvedAt string `json:"resolved_at,omitempty"`
 }
 
@@ -281,10 +285,30 @@ func (s *Service) UpdateReportStatus(ctx context.Context, input UpdateReportStat
 	if err != nil {
 		return nil, ErrNotFound
 	}
+	reviewedBy, err := parseID(input.ReviewedBy)
+	if err != nil {
+		return nil, ErrNotFound
+	}
 	if _, err := s.repo.GetReportByID(ctx, id); err != nil {
 		return nil, err
 	}
-	item, err := s.repo.UpdateReportStatus(ctx, queries.UpdateReportStatusParams{ID: id, Status: strings.TrimSpace(input.Status)})
+	item, err := s.repo.UpdateReportStatus(ctx, queries.UpdateReportStatusParams{ID: id, Status: strings.TrimSpace(input.Status), ReviewedBy: reviewedBy, ModerationNotes: textToPg(input.ModerationNotes)})
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapReport(item)
+	if err != nil {
+		return nil, err
+	}
+	return &ReportResult{Data: mapped}, nil
+}
+
+func (s *Service) GetReport(ctx context.Context, reportID string) (*ReportResult, error) {
+	id, err := parseID(reportID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	item, err := s.repo.GetReportByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +356,25 @@ func mapReport(report queries.Report) (ReportItem, error) {
 	if err != nil {
 		return ReportItem{}, fmt.Errorf("admin: report entity id: %w", err)
 	}
-	return ReportItem{ID: id.String(), ReporterID: reporterID.String(), EntityType: report.EntityType, EntityID: entityID.String(), Reason: report.Reason, Status: report.Status, ResolvedAt: timestamptzValue(report.ResolvedAt)}, nil
+	reviewedBy := ""
+	if report.ReviewedBy.Valid {
+		reviewerID, err := uuidFromPg(report.ReviewedBy)
+		if err == nil {
+			reviewedBy = reviewerID.String()
+		}
+	}
+	return ReportItem{ID: id.String(), ReporterID: reporterID.String(), EntityType: report.EntityType, EntityID: entityID.String(), Reason: report.Reason, Status: report.Status, ReviewedBy: reviewedBy, ModerationNotes: textValue(report.ModerationNotes), ResolvedAt: timestamptzValue(report.ResolvedAt)}, nil
+}
+
+func textToPg(value string) pgtype.Text {
+	value = strings.TrimSpace(value)
+	if value == "" { return pgtype.Text{} }
+	return pgtype.Text{String: value, Valid: true}
+}
+
+func textValue(value pgtype.Text) string {
+	if !value.Valid { return "" }
+	return value.String
 }
 
 func normalizePagination(params PaginationParams) (int, int) {

@@ -64,6 +64,9 @@ type Querier interface {
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
+	ReportCourseExists(ctx context.Context, id pgtype.UUID) (bool, error)
+	ReportOpportunityExists(ctx context.Context, id pgtype.UUID) (bool, error)
+	ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
 	UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)

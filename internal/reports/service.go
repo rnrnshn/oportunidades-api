@@ -45,6 +45,13 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Result,
 	if err != nil {
 		return nil, fmt.Errorf("reports: invalid entity id: %w", err)
 	}
+	exists, err := s.entityExists(ctx, strings.TrimSpace(input.EntityType), pgtype.UUID{Bytes: [16]byte(entityID), Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, fmt.Errorf("reports: entity does not exist")
+	}
 	item, err := s.repo.CreateReport(ctx, queries.CreateReportParams{
 		ReporterID: pgtype.UUID{Bytes: [16]byte(reporterID), Valid: true},
 		EntityType: strings.TrimSpace(input.EntityType),
@@ -59,6 +66,25 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Result,
 		return nil, err
 	}
 	return &Result{Data: mapped}, nil
+}
+
+func (s *Service) entityExists(ctx context.Context, entityType string, entityID pgtype.UUID) (bool, error) {
+	switch entityType {
+	case "university":
+		exists, err := s.repo.ReportUniversityExists(ctx, entityID)
+		if err != nil { return false, fmt.Errorf("reports: check university exists: %w", err) }
+		return exists, nil
+	case "course":
+		exists, err := s.repo.ReportCourseExists(ctx, entityID)
+		if err != nil { return false, fmt.Errorf("reports: check course exists: %w", err) }
+		return exists, nil
+	case "opportunity":
+		exists, err := s.repo.ReportOpportunityExists(ctx, entityID)
+		if err != nil { return false, fmt.Errorf("reports: check opportunity exists: %w", err) }
+		return exists, nil
+	default:
+		return false, fmt.Errorf("reports: invalid entity type")
+	}
 }
 
 func mapReport(report queries.Report) (Item, error) {

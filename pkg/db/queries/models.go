@@ -116,16 +116,18 @@ type RefreshToken struct {
 }
 
 type Report struct {
-	ID         pgtype.UUID        `json:"id"`
-	ReporterID pgtype.UUID        `json:"reporter_id"`
-	EntityType string             `json:"entity_type"`
-	EntityID   pgtype.UUID        `json:"entity_id"`
-	Reason     string             `json:"reason"`
-	Status     string             `json:"status"`
-	ResolvedAt pgtype.Timestamptz `json:"resolved_at"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
+	ID              pgtype.UUID        `json:"id"`
+	ReporterID      pgtype.UUID        `json:"reporter_id"`
+	EntityType      string             `json:"entity_type"`
+	EntityID        pgtype.UUID        `json:"entity_id"`
+	Reason          string             `json:"reason"`
+	Status          string             `json:"status"`
+	ReviewedBy      pgtype.UUID        `json:"reviewed_by"`
+	ModerationNotes pgtype.Text        `json:"moderation_notes"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type University struct {

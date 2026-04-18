@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
@@ -14,6 +15,7 @@ type Handler struct{ service *Service }
 
 type updateReportStatusRequest struct {
 	Status string `json:"status"`
+	ModerationNotes string `json:"moderation_notes"`
 }
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
@@ -139,7 +141,25 @@ func (h *Handler) UpdateReportStatus(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos.", validationErrors.Details())
 	}
-	result, err := h.service.UpdateReportStatus(c.UserContext(), UpdateReportStatusInput{ReportID: strings.TrimSpace(c.Params("id")), Status: strings.TrimSpace(request.Status)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.UpdateReportStatus(c.UserContext(), UpdateReportStatusInput{ReportID: strings.TrimSpace(c.Params("id")), Status: strings.TrimSpace(request.Status), ReviewedBy: currentUser.ID, ModerationNotes: strings.TrimSpace(request.ModerationNotes)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) GetReport(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.GetReport(c.UserContext(), strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}
