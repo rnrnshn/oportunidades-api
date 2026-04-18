@@ -25,6 +25,19 @@ func (q *Queries) CountArticles(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countCMSArticles = `-- name: CountCMSArticles :one
+SELECT COUNT(*)
+FROM articles
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountCMSArticles(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCMSArticles)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createArticle = `-- name: CreateArticle :one
 INSERT INTO articles (
   slug,
@@ -201,6 +214,58 @@ type ListArticlesParams struct {
 
 func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]Article, error) {
 	rows, err := q.db.Query(ctx, listArticles, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Article{}
+	for rows.Next() {
+		var i Article
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Excerpt,
+			&i.Content,
+			&i.CoverImageUrl,
+			&i.Type,
+			&i.Status,
+			&i.SourceName,
+			&i.SourceUrl,
+			&i.SeoTitle,
+			&i.SeoDescription,
+			&i.IsFeatured,
+			&i.AuthorID,
+			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCMSArticles = `-- name: ListCMSArticles :many
+SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+FROM articles
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCMSArticlesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListCMSArticles(ctx context.Context, arg ListCMSArticlesParams) ([]Article, error) {
+	rows, err := q.db.Query(ctx, listCMSArticles, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

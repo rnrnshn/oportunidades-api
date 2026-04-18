@@ -3,6 +3,7 @@ package cms
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strings"
 	"time"
@@ -14,7 +15,45 @@ import (
 
 var slugUnsafePattern = regexp.MustCompile(`[^a-z0-9]+`)
 
+const (
+	defaultPage    = 1
+	defaultPerPage = 20
+	maxPerPage     = 100
+)
+
 type Service struct{ repo Repository }
+
+type PaginationParams struct {
+	Page    int
+	PerPage int
+}
+
+type PaginationMeta struct {
+	Total      int64 `json:"total"`
+	Page       int   `json:"page"`
+	PerPage    int   `json:"per_page"`
+	TotalPages int   `json:"total_pages"`
+}
+
+type ArticlesResult struct {
+	Data []ArticleItem  `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
+type OpportunitiesResult struct {
+	Data []OpportunityItem `json:"data"`
+	Meta PaginationMeta    `json:"meta"`
+}
+
+type UniversitiesResult struct {
+	Data []UniversityItem `json:"data"`
+	Meta PaginationMeta   `json:"meta"`
+}
+
+type CoursesResult struct {
+	Data []CourseItem   `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
 
 type CreateArticleInput struct {
 	ID             string
@@ -46,11 +85,45 @@ type CreateOpportunityInput struct {
 	Area         string
 }
 
+type CreateUniversityInput struct {
+	ID          string
+	CreatedBy   string
+	Name        string
+	Type        string
+	Province    string
+	Description string
+	LogoURL     string
+	Website     string
+	Email       string
+	Phone       string
+}
+
+type CreateCourseInput struct {
+	ID                string
+	UniversityID      string
+	Name              string
+	Area              string
+	Level             string
+	Regime            string
+	DurationYears     int32
+	HasDurationYears  bool
+	AnnualFee         string
+	EntryRequirements string
+}
+
 type ArticleResult struct {
 	Data ArticleItem `json:"data"`
 }
 type OpportunityResult struct {
 	Data OpportunityItem `json:"data"`
+}
+
+type UniversityResult struct {
+	Data UniversityItem `json:"data"`
+}
+
+type CourseResult struct {
+	Data CourseItem `json:"data"`
 }
 
 type ArticleItem struct {
@@ -74,7 +147,64 @@ type OpportunityItem struct {
 	PublishedBy string `json:"published_by"`
 }
 
+type UniversityItem struct {
+	ID        string `json:"id"`
+	Slug      string `json:"slug"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Province  string `json:"province"`
+	Verified  bool   `json:"verified"`
+	CreatedBy string `json:"created_by"`
+}
+
+type CourseItem struct {
+	ID           string `json:"id"`
+	Slug         string `json:"slug"`
+	UniversityID string `json:"university_id"`
+	Name         string `json:"name"`
+	Area         string `json:"area"`
+	Level        string `json:"level"`
+	Regime       string `json:"regime"`
+}
+
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
+
+func (s *Service) ListArticles(ctx context.Context, params PaginationParams) (*ArticlesResult, error) {
+	page, perPage := normalizePagination(params)
+	items, err := s.repo.ListCMSArticles(ctx, queries.ListCMSArticlesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
+	if err != nil {
+		return nil, fmt.Errorf("cms: list articles: %w", err)
+	}
+	total, err := s.repo.CountCMSArticles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cms: count articles: %w", err)
+	}
+	data := make([]ArticleItem, 0, len(items))
+	for _, item := range items {
+		mapped, err := mapArticle(item)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
+	}
+	return &ArticlesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func (s *Service) GetArticle(ctx context.Context, id string) (*ArticleResult, error) {
+	articleID, err := uuid.Parse(strings.TrimSpace(id))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid article id: %w", err)
+	}
+	article, err := s.repo.GetArticleByID(ctx, uuidToPg(articleID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get article: %w", err)
+	}
+	mapped, err := mapArticle(article)
+	if err != nil {
+		return nil, err
+	}
+	return &ArticleResult{Data: mapped}, nil
+}
 
 func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (*ArticleResult, error) {
 	authorID, err := uuid.Parse(strings.TrimSpace(input.AuthorID))
@@ -146,6 +276,267 @@ func (s *Service) UpdateArticle(ctx context.Context, input CreateArticleInput) (
 		return nil, err
 	}
 	return &ArticleResult{Data: mapped}, nil
+}
+
+func (s *Service) ListUniversities(ctx context.Context, params PaginationParams) (*UniversitiesResult, error) {
+	page, perPage := normalizePagination(params)
+	items, err := s.repo.ListCMSUniversities(ctx, queries.ListCMSUniversitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
+	if err != nil {
+		return nil, fmt.Errorf("cms: list universities: %w", err)
+	}
+	total, err := s.repo.CountCMSUniversities(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cms: count universities: %w", err)
+	}
+	data := make([]UniversityItem, 0, len(items))
+	for _, item := range items {
+		mapped, err := mapUniversity(item)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
+	}
+	return &UniversitiesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func (s *Service) GetUniversity(ctx context.Context, id string) (*UniversityResult, error) {
+	universityID, err := uuid.Parse(strings.TrimSpace(id))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid university id: %w", err)
+	}
+	item, err := s.repo.GetUniversityByID(ctx, uuidToPg(universityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get university: %w", err)
+	}
+	mapped, err := mapUniversity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &UniversityResult{Data: mapped}, nil
+}
+
+func (s *Service) CreateUniversity(ctx context.Context, input CreateUniversityInput) (*UniversityResult, error) {
+	createdBy, err := uuid.Parse(strings.TrimSpace(input.CreatedBy))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid creator id: %w", err)
+	}
+	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Type) == "" || strings.TrimSpace(input.Province) == "" {
+		return nil, fmt.Errorf("cms: university required fields are missing")
+	}
+	item, err := s.repo.CreateUniversity(ctx, queries.CreateUniversityParams{
+		Slug:        slugify(input.Name),
+		Name:        strings.TrimSpace(input.Name),
+		Type:        strings.TrimSpace(input.Type),
+		Province:    strings.TrimSpace(input.Province),
+		Description: textToPg(input.Description),
+		LogoUrl:     textToPg(input.LogoURL),
+		Website:     textToPg(input.Website),
+		Email:       textToPg(input.Email),
+		Phone:       textToPg(input.Phone),
+		Verified:    false,
+		VerifiedAt:  pgtype.Timestamptz{},
+		CreatedBy:   uuidToPg(createdBy),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: create university: %w", err)
+	}
+	mapped, err := mapUniversity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &UniversityResult{Data: mapped}, nil
+}
+
+func (s *Service) UpdateUniversity(ctx context.Context, input CreateUniversityInput) (*UniversityResult, error) {
+	universityID, err := uuid.Parse(strings.TrimSpace(input.ID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid university id: %w", err)
+	}
+	existing, err := s.repo.GetUniversityByID(ctx, uuidToPg(universityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get university: %w", err)
+	}
+	name := chooseString(input.Name, existing.Name)
+	typeValue := chooseString(input.Type, existing.Type)
+	province := chooseString(input.Province, existing.Province)
+	if name == "" || typeValue == "" || province == "" {
+		return nil, fmt.Errorf("cms: university required fields are missing")
+	}
+	item, err := s.repo.UpdateUniversity(ctx, queries.UpdateUniversityParams{
+		ID:          uuidToPg(universityID),
+		Name:        name,
+		Type:        typeValue,
+		Province:    province,
+		Description: chooseText(input.Description, existing.Description),
+		LogoUrl:     chooseText(input.LogoURL, existing.LogoUrl),
+		Website:     chooseText(input.Website, existing.Website),
+		Email:       chooseText(input.Email, existing.Email),
+		Phone:       chooseText(input.Phone, existing.Phone),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: update university: %w", err)
+	}
+	mapped, err := mapUniversity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &UniversityResult{Data: mapped}, nil
+}
+
+func (s *Service) ListCourses(ctx context.Context, params PaginationParams) (*CoursesResult, error) {
+	page, perPage := normalizePagination(params)
+	items, err := s.repo.ListCMSCourses(ctx, queries.ListCMSCoursesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
+	if err != nil {
+		return nil, fmt.Errorf("cms: list courses: %w", err)
+	}
+	total, err := s.repo.CountCMSCourses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cms: count courses: %w", err)
+	}
+	data := make([]CourseItem, 0, len(items))
+	for _, item := range items {
+		mapped, err := mapCourse(item)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
+	}
+	return &CoursesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func (s *Service) GetCourse(ctx context.Context, id string) (*CourseResult, error) {
+	courseID, err := uuid.Parse(strings.TrimSpace(id))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid course id: %w", err)
+	}
+	item, err := s.repo.GetCourseByID(ctx, uuidToPg(courseID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get course: %w", err)
+	}
+	mapped, err := mapCourse(item)
+	if err != nil {
+		return nil, err
+	}
+	return &CourseResult{Data: mapped}, nil
+}
+
+func (s *Service) CreateCourse(ctx context.Context, input CreateCourseInput) (*CourseResult, error) {
+	universityID, err := uuid.Parse(strings.TrimSpace(input.UniversityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid university id: %w", err)
+	}
+	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Area) == "" || strings.TrimSpace(input.Level) == "" || strings.TrimSpace(input.Regime) == "" {
+		return nil, fmt.Errorf("cms: course required fields are missing")
+	}
+	item, err := s.repo.CreateCourse(ctx, queries.CreateCourseParams{
+		Slug:              slugify(input.Name),
+		UniversityID:      uuidToPg(universityID),
+		Name:              strings.TrimSpace(input.Name),
+		Area:              strings.TrimSpace(input.Area),
+		Level:             strings.TrimSpace(input.Level),
+		Regime:            strings.TrimSpace(input.Regime),
+		DurationYears:     chooseInt4(input.DurationYears, input.HasDurationYears),
+		AnnualFee:         numericToPg(input.AnnualFee),
+		EntryRequirements: textToPg(input.EntryRequirements),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: create course: %w", err)
+	}
+	mapped, err := mapCourse(item)
+	if err != nil {
+		return nil, err
+	}
+	return &CourseResult{Data: mapped}, nil
+}
+
+func (s *Service) UpdateCourse(ctx context.Context, input CreateCourseInput) (*CourseResult, error) {
+	courseID, err := uuid.Parse(strings.TrimSpace(input.ID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid course id: %w", err)
+	}
+	existing, err := s.repo.GetCourseByID(ctx, uuidToPg(courseID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get course: %w", err)
+	}
+	universityID := existing.UniversityID
+	if strings.TrimSpace(input.UniversityID) != "" {
+		parsedUniversityID, err := uuid.Parse(strings.TrimSpace(input.UniversityID))
+		if err != nil {
+			return nil, fmt.Errorf("cms: invalid university id: %w", err)
+		}
+		universityID = uuidToPg(parsedUniversityID)
+	}
+	name := chooseString(input.Name, existing.Name)
+	area := chooseString(input.Area, existing.Area)
+	level := chooseString(input.Level, existing.Level)
+	regime := chooseString(input.Regime, existing.Regime)
+	if name == "" || area == "" || level == "" || regime == "" {
+		return nil, fmt.Errorf("cms: course required fields are missing")
+	}
+	durationYears := existing.DurationYears
+	if input.HasDurationYears {
+		durationYears = chooseInt4(input.DurationYears, true)
+	}
+	annualFee := existing.AnnualFee
+	if strings.TrimSpace(input.AnnualFee) != "" {
+		annualFee = numericToPg(input.AnnualFee)
+	}
+	item, err := s.repo.UpdateCourse(ctx, queries.UpdateCourseParams{
+		ID:                uuidToPg(courseID),
+		UniversityID:      universityID,
+		Name:              name,
+		Area:              area,
+		Level:             level,
+		Regime:            regime,
+		DurationYears:     durationYears,
+		AnnualFee:         annualFee,
+		EntryRequirements: chooseText(input.EntryRequirements, existing.EntryRequirements),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: update course: %w", err)
+	}
+	mapped, err := mapCourse(item)
+	if err != nil {
+		return nil, err
+	}
+	return &CourseResult{Data: mapped}, nil
+}
+
+func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams) (*OpportunitiesResult, error) {
+	page, perPage := normalizePagination(params)
+	items, err := s.repo.ListCMSOpportunities(ctx, queries.ListCMSOpportunitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
+	if err != nil {
+		return nil, fmt.Errorf("cms: list opportunities: %w", err)
+	}
+	total, err := s.repo.CountCMSOpportunities(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cms: count opportunities: %w", err)
+	}
+	data := make([]OpportunityItem, 0, len(items))
+	for _, item := range items {
+		mapped, err := mapOpportunity(item)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
+	}
+	return &OpportunitiesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func (s *Service) GetOpportunity(ctx context.Context, id string) (*OpportunityResult, error) {
+	opportunityID, err := uuid.Parse(strings.TrimSpace(id))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid opportunity id: %w", err)
+	}
+	opportunity, err := s.repo.GetOpportunityByID(ctx, uuidToPg(opportunityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get opportunity: %w", err)
+	}
+	mapped, err := mapOpportunity(opportunity)
+	if err != nil {
+		return nil, err
+	}
+	return &OpportunityResult{Data: mapped}, nil
 }
 
 func (s *Service) CreateOpportunity(ctx context.Context, input CreateOpportunityInput) (*OpportunityResult, error) {
@@ -262,6 +653,30 @@ func mapOpportunity(opportunity queries.Opportunity) (OpportunityItem, error) {
 	return OpportunityItem{ID: id.String(), Slug: opportunity.Slug, Title: opportunity.Title, Type: opportunity.Type, EntityName: opportunity.EntityName, Verified: opportunity.Verified, IsActive: opportunity.IsActive, PublishedBy: publishedBy.String()}, nil
 }
 
+func mapUniversity(university queries.University) (UniversityItem, error) {
+	id, err := uuidFromPg(university.ID)
+	if err != nil {
+		return UniversityItem{}, fmt.Errorf("cms: university id: %w", err)
+	}
+	createdBy, err := uuidFromPg(university.CreatedBy)
+	if err != nil {
+		return UniversityItem{}, fmt.Errorf("cms: university creator id: %w", err)
+	}
+	return UniversityItem{ID: id.String(), Slug: university.Slug, Name: university.Name, Type: university.Type, Province: university.Province, Verified: university.Verified, CreatedBy: createdBy.String()}, nil
+}
+
+func mapCourse(course queries.Course) (CourseItem, error) {
+	id, err := uuidFromPg(course.ID)
+	if err != nil {
+		return CourseItem{}, fmt.Errorf("cms: course id: %w", err)
+	}
+	universityID, err := uuidFromPg(course.UniversityID)
+	if err != nil {
+		return CourseItem{}, fmt.Errorf("cms: course university id: %w", err)
+	}
+	return CourseItem{ID: id.String(), Slug: course.Slug, UniversityID: universityID.String(), Name: course.Name, Area: course.Area, Level: course.Level, Regime: course.Regime}, nil
+}
+
 func slugify(value string) string {
 	value = strings.ToLower(strings.TrimSpace(value))
 	value = slugUnsafePattern.ReplaceAllString(value, "-")
@@ -293,6 +708,29 @@ func boolValue(input *bool, fallback bool) bool {
 	return *input
 }
 
+func normalizePagination(params PaginationParams) (int, int) {
+	page := params.Page
+	if page < 1 {
+		page = defaultPage
+	}
+	perPage := params.PerPage
+	if perPage < 1 {
+		perPage = defaultPerPage
+	}
+	if perPage > maxPerPage {
+		perPage = maxPerPage
+	}
+	return page, perPage
+}
+
+func buildMeta(total int64, page int, perPage int) PaginationMeta {
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total + int64(perPage) - 1) / int64(perPage))
+	}
+	return PaginationMeta{Total: total, Page: page, PerPage: perPage, TotalPages: totalPages}
+}
+
 func uuidToPg(value uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte(value), Valid: true} }
 func uuidFromPg(value pgtype.UUID) (uuid.UUID, error) {
 	if !value.Valid {
@@ -306,6 +744,28 @@ func textToPg(value string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: value, Valid: true}
+}
+
+func chooseInt4(value int32, valid bool) pgtype.Int4 {
+	if !valid {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: value, Valid: true}
+}
+
+func numericToPg(value string) pgtype.Numeric {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return pgtype.Numeric{}
+	}
+	return pgtype.Numeric{Int: mustParseNumeric(trimmed), Exp: -2, Valid: true}
+}
+
+func mustParseNumeric(value string) *big.Int {
+	clean := strings.ReplaceAll(strings.TrimSpace(value), ".", "")
+	parsed := new(big.Int)
+	parsed.SetString(clean, 10)
+	return parsed
 }
 func timestamptzValue(value pgtype.Timestamptz) string {
 	if !value.Valid {

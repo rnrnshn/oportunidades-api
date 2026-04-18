@@ -10,6 +10,18 @@ FROM opportunities
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: ListCMSOpportunities :many
+SELECT *
+FROM opportunities
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountCMSOpportunities :one
+SELECT COUNT(*)
+FROM opportunities
+WHERE deleted_at IS NULL;
+
 -- name: CreateOpportunity :one
 INSERT INTO opportunities (
   slug,

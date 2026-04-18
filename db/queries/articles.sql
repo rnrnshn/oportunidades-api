@@ -11,6 +11,18 @@ FROM articles
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: ListCMSArticles :many
+SELECT *
+FROM articles
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountCMSArticles :one
+SELECT COUNT(*)
+FROM articles
+WHERE deleted_at IS NULL;
+
 -- name: CreateArticle :one
 INSERT INTO articles (
   slug,

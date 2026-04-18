@@ -1,6 +1,8 @@
 package cms
 
 import (
+	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -38,10 +40,56 @@ type createOpportunityRequest struct {
 	Area         string `json:"area"`
 }
 
+type createUniversityRequest struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Province    string `json:"province"`
+	Description string `json:"description"`
+	LogoURL     string `json:"logo_url"`
+	Website     string `json:"website"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+}
+
+type createCourseRequest struct {
+	UniversityID      string `json:"university_id"`
+	Name              string `json:"name"`
+	Area              string `json:"area"`
+	Level             string `json:"level"`
+	Regime            string `json:"regime"`
+	DurationYears     int32  `json:"duration_years"`
+	AnnualFee         string `json:"annual_fee"`
+	EntryRequirements string `json:"entry_requirements"`
+}
+
 type updateArticleRequest = createArticleRequest
 type updateOpportunityRequest = createOpportunityRequest
+type updateUniversityRequest = createUniversityRequest
+type updateCourseRequest = createCourseRequest
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
+
+func (h *Handler) ListArticles(c *fiber.Ctx) error {
+	result, err := h.service.ListArticles(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) GetArticle(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.GetArticle(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
 
 func (h *Handler) CreateArticle(c *fiber.Ctx) error {
 	currentUser, ok := appauth.CurrentUser(c)
@@ -97,6 +145,154 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 		return handleError(err)
 	}
 	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+func (h *Handler) ListUniversities(c *fiber.Ctx) error {
+	result, err := h.service.ListUniversities(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) GetUniversity(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.GetUniversity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) CreateUniversity(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	var request createUniversityRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("name", request.Name, "Nome é obrigatório.")
+	validationErrors.Required("type", request.Type, "Tipo é obrigatório.")
+	validationErrors.Required("province", request.Province, "Província é obrigatória.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.CreateUniversity(c.UserContext(), CreateUniversityInput{CreatedBy: currentUser.ID, Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+func (h *Handler) UpdateUniversity(c *fiber.Ctx) error {
+	var request updateUniversityRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.UpdateUniversity(c.UserContext(), CreateUniversityInput{ID: strings.TrimSpace(c.Params("id")), Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) ListCourses(c *fiber.Ctx) error {
+	result, err := h.service.ListCourses(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) GetCourse(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.GetCourse(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) CreateCourse(c *fiber.Ctx) error {
+	var request createCourseRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("university_id", request.UniversityID, "university_id é obrigatório.")
+	validationErrors.UUID("university_id", request.UniversityID, "university_id deve ser um UUID válido.")
+	validationErrors.Required("name", request.Name, "Nome é obrigatório.")
+	validationErrors.Required("area", request.Area, "Área é obrigatória.")
+	validationErrors.Required("level", request.Level, "Nível é obrigatório.")
+	validationErrors.Required("regime", request.Regime, "Regime é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.CreateCourse(c.UserContext(), CreateCourseInput{UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+func (h *Handler) UpdateCourse(c *fiber.Ctx) error {
+	var request updateCourseRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	validationErrors.UUID("university_id", request.UniversityID, "university_id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.UpdateCourse(c.UserContext(), CreateCourseInput{ID: strings.TrimSpace(c.Params("id")), UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
+	result, err := h.service.ListOpportunities(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) GetOpportunity(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.GetOpportunity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
 }
 
 func (h *Handler) UpdateArticle(c *fiber.Ctx) error {
@@ -162,6 +358,9 @@ func (h *Handler) UpdateOpportunity(c *fiber.Ctx) error {
 
 func handleError(err error) error {
 	message := err.Error()
+	if errors.Is(err, ErrNotFound) {
+		return apierror.NotFound("Recurso CMS não encontrado.")
+	}
 	if strings.Contains(message, "duplicate key value") {
 		return apierror.Conflict("Já existe um recurso com este slug.")
 	}
@@ -169,4 +368,16 @@ func handleError(err error) error {
 		return apierror.Validation("Dados inválidos para publicação CMS.", nil)
 	}
 	return err
+}
+
+func queryInt(c *fiber.Ctx, key string, fallback int) int {
+	rawValue := strings.TrimSpace(c.Query(key))
+	if rawValue == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(rawValue)
+	if err != nil {
+		return fallback
+	}
+	return value
 }

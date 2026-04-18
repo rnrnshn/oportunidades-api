@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countCMSOpportunities = `-- name: CountCMSOpportunities :one
+SELECT COUNT(*)
+FROM opportunities
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountCMSOpportunities(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCMSOpportunities)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countOpportunities = `-- name: CountOpportunities :one
 SELECT COUNT(*)
 FROM opportunities
@@ -181,6 +194,58 @@ func (q *Queries) GetOpportunityBySlug(ctx context.Context, slug string) (Opport
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listCMSOpportunities = `-- name: ListCMSOpportunities :many
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+FROM opportunities
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCMSOpportunitiesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListCMSOpportunities(ctx context.Context, arg ListCMSOpportunitiesParams) ([]Opportunity, error) {
+	rows, err := q.db.Query(ctx, listCMSOpportunities, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Opportunity{}
+	for rows.Next() {
+		var i Opportunity
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Type,
+			&i.EntityName,
+			&i.Description,
+			&i.Requirements,
+			&i.Deadline,
+			&i.ApplyUrl,
+			&i.Country,
+			&i.Language,
+			&i.Area,
+			&i.IsActive,
+			&i.PublishedBy,
+			&i.Verified,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOpportunities = `-- name: ListOpportunities :many

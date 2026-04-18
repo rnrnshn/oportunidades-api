@@ -7,7 +7,35 @@ package queries
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countCMSCourses = `-- name: CountCMSCourses :one
+SELECT COUNT(*)
+FROM courses
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountCMSCourses(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCMSCourses)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countCMSUniversities = `-- name: CountCMSUniversities :one
+SELECT COUNT(*)
+FROM universities
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountCMSUniversities(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCMSUniversities)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const countCourses = `-- name: CountCourses :one
 SELECT COUNT(*)
@@ -35,6 +63,185 @@ func (q *Queries) CountUniversities(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const createCourse = `-- name: CreateCourse :one
+INSERT INTO courses (
+  slug,
+  university_id,
+  name,
+  area,
+  level,
+  regime,
+  duration_years,
+  annual_fee,
+  entry_requirements
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9
+)
+RETURNING id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
+`
+
+type CreateCourseParams struct {
+	Slug              string         `json:"slug"`
+	UniversityID      pgtype.UUID    `json:"university_id"`
+	Name              string         `json:"name"`
+	Area              string         `json:"area"`
+	Level             string         `json:"level"`
+	Regime            string         `json:"regime"`
+	DurationYears     pgtype.Int4    `json:"duration_years"`
+	AnnualFee         pgtype.Numeric `json:"annual_fee"`
+	EntryRequirements pgtype.Text    `json:"entry_requirements"`
+}
+
+func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Course, error) {
+	row := q.db.QueryRow(ctx, createCourse,
+		arg.Slug,
+		arg.UniversityID,
+		arg.Name,
+		arg.Area,
+		arg.Level,
+		arg.Regime,
+		arg.DurationYears,
+		arg.AnnualFee,
+		arg.EntryRequirements,
+	)
+	var i Course
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.UniversityID,
+		&i.Name,
+		&i.Area,
+		&i.Level,
+		&i.Regime,
+		&i.DurationYears,
+		&i.AnnualFee,
+		&i.EntryRequirements,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createUniversity = `-- name: CreateUniversity :one
+INSERT INTO universities (
+  slug,
+  name,
+  type,
+  province,
+  description,
+  logo_url,
+  website,
+  email,
+  phone,
+  verified,
+  verified_at,
+  created_by
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  $10,
+  $11,
+  $12
+)
+RETURNING id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+`
+
+type CreateUniversityParams struct {
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Type        string             `json:"type"`
+	Province    string             `json:"province"`
+	Description pgtype.Text        `json:"description"`
+	LogoUrl     pgtype.Text        `json:"logo_url"`
+	Website     pgtype.Text        `json:"website"`
+	Email       pgtype.Text        `json:"email"`
+	Phone       pgtype.Text        `json:"phone"`
+	Verified    bool               `json:"verified"`
+	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+}
+
+func (q *Queries) CreateUniversity(ctx context.Context, arg CreateUniversityParams) (University, error) {
+	row := q.db.QueryRow(ctx, createUniversity,
+		arg.Slug,
+		arg.Name,
+		arg.Type,
+		arg.Province,
+		arg.Description,
+		arg.LogoUrl,
+		arg.Website,
+		arg.Email,
+		arg.Phone,
+		arg.Verified,
+		arg.VerifiedAt,
+		arg.CreatedBy,
+	)
+	var i University
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Type,
+		&i.Province,
+		&i.Description,
+		&i.LogoUrl,
+		&i.Website,
+		&i.Email,
+		&i.Phone,
+		&i.Verified,
+		&i.VerifiedAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getCourseByID = `-- name: GetCourseByID :one
+SELECT id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
+FROM courses
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) GetCourseByID(ctx context.Context, id pgtype.UUID) (Course, error) {
+	row := q.db.QueryRow(ctx, getCourseByID, id)
+	var i Course
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.UniversityID,
+		&i.Name,
+		&i.Area,
+		&i.Level,
+		&i.Regime,
+		&i.DurationYears,
+		&i.AnnualFee,
+		&i.EntryRequirements,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getCourseBySlug = `-- name: GetCourseBySlug :one
 SELECT id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
 FROM courses
@@ -56,6 +263,37 @@ func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (Course, err
 		&i.DurationYears,
 		&i.AnnualFee,
 		&i.EntryRequirements,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getUniversityByID = `-- name: GetUniversityByID :one
+SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+FROM universities
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) GetUniversityByID(ctx context.Context, id pgtype.UUID) (University, error) {
+	row := q.db.QueryRow(ctx, getUniversityByID, id)
+	var i University
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Type,
+		&i.Province,
+		&i.Description,
+		&i.LogoUrl,
+		&i.Website,
+		&i.Email,
+		&i.Phone,
+		&i.Verified,
+		&i.VerifiedAt,
+		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -92,6 +330,103 @@ func (q *Queries) GetUniversityBySlug(ctx context.Context, slug string) (Univers
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listCMSCourses = `-- name: ListCMSCourses :many
+SELECT id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
+FROM courses
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCMSCoursesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListCMSCourses(ctx context.Context, arg ListCMSCoursesParams) ([]Course, error) {
+	rows, err := q.db.Query(ctx, listCMSCourses, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Course{}
+	for rows.Next() {
+		var i Course
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.UniversityID,
+			&i.Name,
+			&i.Area,
+			&i.Level,
+			&i.Regime,
+			&i.DurationYears,
+			&i.AnnualFee,
+			&i.EntryRequirements,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCMSUniversities = `-- name: ListCMSUniversities :many
+SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+FROM universities
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCMSUniversitiesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListCMSUniversities(ctx context.Context, arg ListCMSUniversitiesParams) ([]University, error) {
+	rows, err := q.db.Query(ctx, listCMSUniversities, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []University{}
+	for rows.Next() {
+		var i University
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Type,
+			&i.Province,
+			&i.Description,
+			&i.LogoUrl,
+			&i.Website,
+			&i.Email,
+			&i.Phone,
+			&i.Verified,
+			&i.VerifiedAt,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCourses = `-- name: ListCourses :many
@@ -189,4 +524,125 @@ func (q *Queries) ListUniversities(ctx context.Context, arg ListUniversitiesPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCourse = `-- name: UpdateCourse :one
+UPDATE courses
+SET
+  university_id = $2,
+  name = $3,
+  area = $4,
+  level = $5,
+  regime = $6,
+  duration_years = $7,
+  annual_fee = $8,
+  entry_requirements = $9
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
+`
+
+type UpdateCourseParams struct {
+	ID                pgtype.UUID    `json:"id"`
+	UniversityID      pgtype.UUID    `json:"university_id"`
+	Name              string         `json:"name"`
+	Area              string         `json:"area"`
+	Level             string         `json:"level"`
+	Regime            string         `json:"regime"`
+	DurationYears     pgtype.Int4    `json:"duration_years"`
+	AnnualFee         pgtype.Numeric `json:"annual_fee"`
+	EntryRequirements pgtype.Text    `json:"entry_requirements"`
+}
+
+func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error) {
+	row := q.db.QueryRow(ctx, updateCourse,
+		arg.ID,
+		arg.UniversityID,
+		arg.Name,
+		arg.Area,
+		arg.Level,
+		arg.Regime,
+		arg.DurationYears,
+		arg.AnnualFee,
+		arg.EntryRequirements,
+	)
+	var i Course
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.UniversityID,
+		&i.Name,
+		&i.Area,
+		&i.Level,
+		&i.Regime,
+		&i.DurationYears,
+		&i.AnnualFee,
+		&i.EntryRequirements,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateUniversity = `-- name: UpdateUniversity :one
+UPDATE universities
+SET
+  name = $2,
+  type = $3,
+  province = $4,
+  description = $5,
+  logo_url = $6,
+  website = $7,
+  email = $8,
+  phone = $9
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+`
+
+type UpdateUniversityParams struct {
+	ID          pgtype.UUID `json:"id"`
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	Province    string      `json:"province"`
+	Description pgtype.Text `json:"description"`
+	LogoUrl     pgtype.Text `json:"logo_url"`
+	Website     pgtype.Text `json:"website"`
+	Email       pgtype.Text `json:"email"`
+	Phone       pgtype.Text `json:"phone"`
+}
+
+func (q *Queries) UpdateUniversity(ctx context.Context, arg UpdateUniversityParams) (University, error) {
+	row := q.db.QueryRow(ctx, updateUniversity,
+		arg.ID,
+		arg.Name,
+		arg.Type,
+		arg.Province,
+		arg.Description,
+		arg.LogoUrl,
+		arg.Website,
+		arg.Email,
+		arg.Phone,
+	)
+	var i University
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Type,
+		&i.Province,
+		&i.Description,
+		&i.LogoUrl,
+		&i.Website,
+		&i.Email,
+		&i.Phone,
+		&i.Verified,
+		&i.VerifiedAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }

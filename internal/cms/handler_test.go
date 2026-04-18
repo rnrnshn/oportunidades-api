@@ -17,12 +17,26 @@ import (
 )
 
 type mockRepository struct {
-	createArticleFn      func(context.Context, queries.CreateArticleParams) (queries.Article, error)
-	createOpportunityFn  func(context.Context, queries.CreateOpportunityParams) (queries.Opportunity, error)
-	getArticleByIDFn     func(context.Context, pgtype.UUID) (queries.Article, error)
-	updateArticleFn      func(context.Context, queries.UpdateArticleParams) (queries.Article, error)
-	getOpportunityByIDFn func(context.Context, pgtype.UUID) (queries.Opportunity, error)
-	updateOpportunityFn  func(context.Context, queries.UpdateOpportunityParams) (queries.Opportunity, error)
+	createArticleFn         func(context.Context, queries.CreateArticleParams) (queries.Article, error)
+	createOpportunityFn     func(context.Context, queries.CreateOpportunityParams) (queries.Opportunity, error)
+	listCMSArticlesFn       func(context.Context, queries.ListCMSArticlesParams) ([]queries.Article, error)
+	countCMSArticlesFn      func(context.Context) (int64, error)
+	getArticleByIDFn        func(context.Context, pgtype.UUID) (queries.Article, error)
+	updateArticleFn         func(context.Context, queries.UpdateArticleParams) (queries.Article, error)
+	createUniversityFn      func(context.Context, queries.CreateUniversityParams) (queries.University, error)
+	listCMSUniversitiesFn   func(context.Context, queries.ListCMSUniversitiesParams) ([]queries.University, error)
+	countCMSUniversitiesFn  func(context.Context) (int64, error)
+	getUniversityByIDFn     func(context.Context, pgtype.UUID) (queries.University, error)
+	updateUniversityFn      func(context.Context, queries.UpdateUniversityParams) (queries.University, error)
+	createCourseFn          func(context.Context, queries.CreateCourseParams) (queries.Course, error)
+	listCMSCoursesFn        func(context.Context, queries.ListCMSCoursesParams) ([]queries.Course, error)
+	countCMSCoursesFn       func(context.Context) (int64, error)
+	getCourseByIDFn         func(context.Context, pgtype.UUID) (queries.Course, error)
+	updateCourseFn          func(context.Context, queries.UpdateCourseParams) (queries.Course, error)
+	listCMSOpportunitiesFn  func(context.Context, queries.ListCMSOpportunitiesParams) ([]queries.Opportunity, error)
+	countCMSOpportunitiesFn func(context.Context) (int64, error)
+	getOpportunityByIDFn    func(context.Context, pgtype.UUID) (queries.Opportunity, error)
+	updateOpportunityFn     func(context.Context, queries.UpdateOpportunityParams) (queries.Opportunity, error)
 }
 
 func (m *mockRepository) CreateArticle(ctx context.Context, params queries.CreateArticleParams) (queries.Article, error) {
@@ -31,11 +45,53 @@ func (m *mockRepository) CreateArticle(ctx context.Context, params queries.Creat
 func (m *mockRepository) CreateOpportunity(ctx context.Context, params queries.CreateOpportunityParams) (queries.Opportunity, error) {
 	return m.createOpportunityFn(ctx, params)
 }
+func (m *mockRepository) ListCMSArticles(ctx context.Context, params queries.ListCMSArticlesParams) ([]queries.Article, error) {
+	return m.listCMSArticlesFn(ctx, params)
+}
+func (m *mockRepository) CountCMSArticles(ctx context.Context) (int64, error) {
+	return m.countCMSArticlesFn(ctx)
+}
 func (m *mockRepository) GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
 	return m.getArticleByIDFn(ctx, id)
 }
 func (m *mockRepository) UpdateArticle(ctx context.Context, params queries.UpdateArticleParams) (queries.Article, error) {
 	return m.updateArticleFn(ctx, params)
+}
+func (m *mockRepository) CreateUniversity(ctx context.Context, params queries.CreateUniversityParams) (queries.University, error) {
+	return m.createUniversityFn(ctx, params)
+}
+func (m *mockRepository) ListCMSUniversities(ctx context.Context, params queries.ListCMSUniversitiesParams) ([]queries.University, error) {
+	return m.listCMSUniversitiesFn(ctx, params)
+}
+func (m *mockRepository) CountCMSUniversities(ctx context.Context) (int64, error) {
+	return m.countCMSUniversitiesFn(ctx)
+}
+func (m *mockRepository) GetUniversityByID(ctx context.Context, id pgtype.UUID) (queries.University, error) {
+	return m.getUniversityByIDFn(ctx, id)
+}
+func (m *mockRepository) UpdateUniversity(ctx context.Context, params queries.UpdateUniversityParams) (queries.University, error) {
+	return m.updateUniversityFn(ctx, params)
+}
+func (m *mockRepository) CreateCourse(ctx context.Context, params queries.CreateCourseParams) (queries.Course, error) {
+	return m.createCourseFn(ctx, params)
+}
+func (m *mockRepository) ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams) ([]queries.Course, error) {
+	return m.listCMSCoursesFn(ctx, params)
+}
+func (m *mockRepository) CountCMSCourses(ctx context.Context) (int64, error) {
+	return m.countCMSCoursesFn(ctx)
+}
+func (m *mockRepository) GetCourseByID(ctx context.Context, id pgtype.UUID) (queries.Course, error) {
+	return m.getCourseByIDFn(ctx, id)
+}
+func (m *mockRepository) UpdateCourse(ctx context.Context, params queries.UpdateCourseParams) (queries.Course, error) {
+	return m.updateCourseFn(ctx, params)
+}
+func (m *mockRepository) ListCMSOpportunities(ctx context.Context, params queries.ListCMSOpportunitiesParams) ([]queries.Opportunity, error) {
+	return m.listCMSOpportunitiesFn(ctx, params)
+}
+func (m *mockRepository) CountCMSOpportunities(ctx context.Context) (int64, error) {
+	return m.countCMSOpportunitiesFn(ctx)
 }
 func (m *mockRepository) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	return m.getOpportunityByIDFn(ctx, id)
@@ -114,6 +170,43 @@ func TestHandlerUpdateOpportunityValidatesID(t *testing.T) {
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
 	app.Patch("/v1/cms/opportunities/:id", handler.UpdateOpportunity)
 	req := httptest.NewRequest(http.MethodPatch, "/v1/cms/opportunities/bad-id", strings.NewReader(`{"title":"Teste"}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerCreateUniversity(t *testing.T) {
+	universityID := uuid.New()
+	userID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{createUniversityFn: func(context.Context, queries.CreateUniversityParams) (queries.University, error) {
+		return queries.University{ID: pgtype.UUID{Bytes: [16]byte(universityID), Valid: true}, Slug: "uni", Name: "Universidade Teste", Type: "publica", Province: "Maputo", CreatedBy: pgtype.UUID{Bytes: [16]byte(userID), Valid: true}}, nil
+	}}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/cms/universities", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
+		return handler.CreateUniversity(c)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/cms/universities", strings.NewReader(`{"name":"Universidade Teste","type":"publica","province":"Maputo"}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerCreateCourseValidatesUniversityID(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/cms/courses", handler.CreateCourse)
+	req := httptest.NewRequest(http.MethodPost, "/v1/cms/courses", strings.NewReader(`{"university_id":"bad-id","name":"Curso","area":"Tecnologia","level":"licenciatura","regime":"presencial"}`))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	res, err := app.Test(req)
 	if err != nil {
