@@ -17,7 +17,7 @@ SET
   status = 'archived'
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+RETURNING id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
@@ -29,6 +29,7 @@ func (q *Queries) ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, 
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -79,6 +80,7 @@ INSERT INTO articles (
   title,
   excerpt,
   content,
+  content_json,
   cover_image_url,
   type,
   status,
@@ -104,8 +106,9 @@ INSERT INTO articles (
   $12,
   $13,
   $14
+  ,$15
 )
-RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+RETURNING id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 `
 
 type CreateArticleParams struct {
@@ -113,6 +116,7 @@ type CreateArticleParams struct {
 	Title          string             `json:"title"`
 	Excerpt        pgtype.Text        `json:"excerpt"`
 	Content        string             `json:"content"`
+	ContentJson    []byte             `json:"content_json"`
 	CoverImageUrl  pgtype.Text        `json:"cover_image_url"`
 	Type           string             `json:"type"`
 	Status         string             `json:"status"`
@@ -131,6 +135,7 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 		arg.Title,
 		arg.Excerpt,
 		arg.Content,
+		arg.ContentJson,
 		arg.CoverImageUrl,
 		arg.Type,
 		arg.Status,
@@ -149,6 +154,7 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -167,7 +173,7 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 }
 
 const getArticleByID = `-- name: GetArticleByID :one
-SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+SELECT id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 FROM articles
 WHERE id = $1
   AND deleted_at IS NULL
@@ -182,6 +188,7 @@ func (q *Queries) GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, 
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -200,7 +207,7 @@ func (q *Queries) GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, 
 }
 
 const getArticleBySlug = `-- name: GetArticleBySlug :one
-SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+SELECT id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 FROM articles
 WHERE slug = $1
   AND status = 'published'
@@ -216,6 +223,7 @@ func (q *Queries) GetArticleBySlug(ctx context.Context, slug string) (Article, e
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -234,7 +242,7 @@ func (q *Queries) GetArticleBySlug(ctx context.Context, slug string) (Article, e
 }
 
 const listArticles = `-- name: ListArticles :many
-SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+SELECT id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 FROM articles
 WHERE status = 'published'
   AND deleted_at IS NULL
@@ -262,6 +270,7 @@ func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]A
 			&i.Title,
 			&i.Excerpt,
 			&i.Content,
+			&i.ContentJson,
 			&i.CoverImageUrl,
 			&i.Type,
 			&i.Status,
@@ -287,7 +296,7 @@ func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]A
 }
 
 const listCMSArticles = `-- name: ListCMSArticles :many
-SELECT id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+SELECT id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 FROM articles
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -314,6 +323,7 @@ func (q *Queries) ListCMSArticles(ctx context.Context, arg ListCMSArticlesParams
 			&i.Title,
 			&i.Excerpt,
 			&i.Content,
+			&i.ContentJson,
 			&i.CoverImageUrl,
 			&i.Type,
 			&i.Status,
@@ -345,7 +355,7 @@ SET
   published_at = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+RETURNING id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
@@ -357,6 +367,7 @@ func (q *Queries) PublishArticle(ctx context.Context, id pgtype.UUID) (Article, 
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -381,7 +392,7 @@ SET
   published_at = NULL
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+RETURNING id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error) {
@@ -393,6 +404,7 @@ func (q *Queries) UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,
@@ -416,16 +428,17 @@ SET
   title = $2,
   excerpt = $3,
   content = $4,
-  cover_image_url = $5,
-  type = $6,
-  source_name = $7,
-  source_url = $8,
-  seo_title = $9,
-  seo_description = $10,
-  is_featured = $11
+  content_json = $5,
+  cover_image_url = $6,
+  type = $7,
+  source_name = $8,
+  source_url = $9,
+  seo_title = $10,
+  seo_description = $11,
+  is_featured = $12
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+RETURNING id, slug, title, excerpt, content, content_json, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
 `
 
 type UpdateArticleParams struct {
@@ -433,6 +446,7 @@ type UpdateArticleParams struct {
 	Title          string      `json:"title"`
 	Excerpt        pgtype.Text `json:"excerpt"`
 	Content        string      `json:"content"`
+	ContentJson    []byte      `json:"content_json"`
 	CoverImageUrl  pgtype.Text `json:"cover_image_url"`
 	Type           string      `json:"type"`
 	SourceName     pgtype.Text `json:"source_name"`
@@ -448,6 +462,7 @@ func (q *Queries) UpdateArticle(ctx context.Context, arg UpdateArticleParams) (A
 		arg.Title,
 		arg.Excerpt,
 		arg.Content,
+		arg.ContentJson,
 		arg.CoverImageUrl,
 		arg.Type,
 		arg.SourceName,
@@ -463,6 +478,7 @@ func (q *Queries) UpdateArticle(ctx context.Context, arg UpdateArticleParams) (A
 		&i.Title,
 		&i.Excerpt,
 		&i.Content,
+		&i.ContentJson,
 		&i.CoverImageUrl,
 		&i.Type,
 		&i.Status,

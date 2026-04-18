@@ -2,6 +2,7 @@ package cms
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"regexp"
@@ -100,6 +101,7 @@ type CreateArticleInput struct {
 	Title          string
 	Excerpt        string
 	Content        string
+	ContentJSON    json.RawMessage
 	CoverImageURL  string
 	Type           string
 	SourceName     string
@@ -166,13 +168,22 @@ type CourseResult struct {
 }
 
 type ArticleItem struct {
-	ID        string `json:"id"`
-	Slug      string `json:"slug"`
-	Title     string `json:"title"`
-	Type      string `json:"type"`
-	Status    string `json:"status"`
-	AuthorID  string `json:"author_id"`
-	Published string `json:"published_at,omitempty"`
+	ID             string `json:"id"`
+	Slug           string `json:"slug"`
+	Title          string `json:"title"`
+	Excerpt        string `json:"excerpt,omitempty"`
+	Content        string `json:"content"`
+	ContentJSON    any    `json:"content_json,omitempty"`
+	CoverImageURL  string `json:"cover_image_url,omitempty"`
+	Type           string `json:"type"`
+	Status         string `json:"status"`
+	SourceName     string `json:"source_name,omitempty"`
+	SourceURL      string `json:"source_url,omitempty"`
+	SEOTitle       string `json:"seo_title,omitempty"`
+	SEODescription string `json:"seo_description,omitempty"`
+	IsFeatured     bool   `json:"is_featured"`
+	AuthorID       string `json:"author_id"`
+	Published      string `json:"published_at,omitempty"`
 }
 
 type OpportunityItem struct {
@@ -273,6 +284,7 @@ func (s *Service) CreateArticle(ctx context.Context, actor Actor, input CreateAr
 		Title:          strings.TrimSpace(input.Title),
 		Excerpt:        textToPg(input.Excerpt),
 		Content:        strings.TrimSpace(input.Content),
+		ContentJson:    jsonBytes(input.ContentJSON),
 		CoverImageUrl:  textToPg(input.CoverImageURL),
 		Type:           strings.TrimSpace(input.Type),
 		Status:         "draft",
@@ -317,6 +329,7 @@ func (s *Service) UpdateArticle(ctx context.Context, actor Actor, input CreateAr
 		Title:          title,
 		Excerpt:        chooseText(input.Excerpt, existingArticle.Excerpt),
 		Content:        content,
+		ContentJson:    chooseJSON(input.ContentJSON, existingArticle.ContentJson),
 		CoverImageUrl:  chooseText(input.CoverImageURL, existingArticle.CoverImageUrl),
 		Type:           articleType,
 		SourceName:     chooseText(input.SourceName, existingArticle.SourceName),
@@ -771,7 +784,24 @@ func mapArticle(article queries.Article) (ArticleItem, error) {
 	if err != nil {
 		return ArticleItem{}, fmt.Errorf("cms: article author id: %w", err)
 	}
-	return ArticleItem{ID: id.String(), Slug: article.Slug, Title: article.Title, Type: article.Type, Status: article.Status, AuthorID: authorID.String(), Published: timestamptzValue(article.PublishedAt)}, nil
+	return ArticleItem{
+		ID:             id.String(),
+		Slug:           article.Slug,
+		Title:          article.Title,
+		Excerpt:        textValue(article.Excerpt),
+		Content:        article.Content,
+		ContentJSON:    parseJSON(article.ContentJson),
+		CoverImageURL:  textValue(article.CoverImageUrl),
+		Type:           article.Type,
+		Status:         article.Status,
+		SourceName:     textValue(article.SourceName),
+		SourceURL:      textValue(article.SourceUrl),
+		SEOTitle:       textValue(article.SeoTitle),
+		SEODescription: textValue(article.SeoDescription),
+		IsFeatured:     article.IsFeatured,
+		AuthorID:       authorID.String(),
+		Published:      timestamptzValue(article.PublishedAt),
+	}, nil
 }
 
 func mapOpportunity(opportunity queries.Opportunity) (OpportunityItem, error) {
@@ -839,6 +869,31 @@ func boolValue(input *bool, fallback bool) bool {
 		return fallback
 	}
 	return *input
+}
+
+func jsonBytes(value json.RawMessage) []byte {
+	if len(value) == 0 {
+		return nil
+	}
+	return []byte(value)
+}
+
+func chooseJSON(input json.RawMessage, fallback []byte) []byte {
+	if len(input) == 0 {
+		return fallback
+	}
+	return []byte(input)
+}
+
+func parseJSON(value []byte) any {
+	if len(value) == 0 {
+		return nil
+	}
+	var parsed any
+	if err := json.Unmarshal(value, &parsed); err != nil {
+		return nil
+	}
+	return parsed
 }
 
 func normalizePagination(params PaginationParams) (int, int) {

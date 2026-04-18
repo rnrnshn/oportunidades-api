@@ -1,6 +1,7 @@
 package cms
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ type createArticleRequest struct {
 	Title          string `json:"title"`
 	Excerpt        string `json:"excerpt"`
 	Content        string `json:"content"`
+	ContentJSON    json.RawMessage `json:"content_json"`
 	CoverImageURL  string `json:"cover_image_url"`
 	Type           string `json:"type"`
 	SourceName     string `json:"source_name"`
@@ -127,7 +129,7 @@ func (h *Handler) CreateArticle(c *fiber.Ctx) error {
 	}
 	result, err := h.service.CreateArticle(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateArticleInput{
 		AuthorID: currentUser.ID,
-		Title:    strings.TrimSpace(request.Title), Excerpt: strings.TrimSpace(request.Excerpt), Content: strings.TrimSpace(request.Content), CoverImageURL: strings.TrimSpace(request.CoverImageURL),
+		Title:    strings.TrimSpace(request.Title), Excerpt: strings.TrimSpace(request.Excerpt), Content: strings.TrimSpace(request.Content), ContentJSON: request.ContentJSON, CoverImageURL: strings.TrimSpace(request.CoverImageURL),
 		Type: strings.TrimSpace(request.Type), SourceName: strings.TrimSpace(request.SourceName), SourceURL: strings.TrimSpace(request.SourceURL), SEOTitle: strings.TrimSpace(request.SEOTitle), SEODescription: strings.TrimSpace(request.SEODescription), IsFeatured: request.IsFeatured,
 	})
 	if err != nil {
@@ -398,6 +400,7 @@ func (h *Handler) UpdateArticle(c *fiber.Ctx) error {
 		Title:          strings.TrimSpace(request.Title),
 		Excerpt:        strings.TrimSpace(request.Excerpt),
 		Content:        strings.TrimSpace(request.Content),
+		ContentJSON:    request.ContentJSON,
 		CoverImageURL:  strings.TrimSpace(request.CoverImageURL),
 		Type:           strings.TrimSpace(request.Type),
 		SourceName:     strings.TrimSpace(request.SourceName),

@@ -142,6 +142,7 @@ CREATE TABLE articles (
   title TEXT NOT NULL,
   excerpt TEXT,
   content TEXT NOT NULL,
+  content_json JSONB,
   cover_image_url TEXT,
   type TEXT NOT NULL CHECK (type IN ('editorial', 'news', 'guide')),
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'published', 'archived')),

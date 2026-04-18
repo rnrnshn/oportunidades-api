@@ -14,6 +14,7 @@ type Article struct {
 	Title          string             `json:"title"`
 	Excerpt        pgtype.Text        `json:"excerpt"`
 	Content        string             `json:"content"`
+	ContentJson    []byte             `json:"content_json"`
 	CoverImageUrl  pgtype.Text        `json:"cover_image_url"`
 	Type           string             `json:"type"`
 	Status         string             `json:"status"`

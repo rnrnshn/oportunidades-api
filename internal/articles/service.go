@@ -2,6 +2,7 @@ package articles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -49,6 +50,7 @@ type ArticleItem struct {
 	Title          string `json:"title"`
 	Excerpt        string `json:"excerpt,omitempty"`
 	Content        string `json:"content"`
+	ContentJSON    any    `json:"content_json,omitempty"`
 	CoverImageURL  string `json:"cover_image_url,omitempty"`
 	Type           string `json:"type"`
 	SourceName     string `json:"source_name,omitempty"`
@@ -128,6 +130,7 @@ func mapArticle(item queries.Article) (ArticleItem, error) {
 		Title:          item.Title,
 		Excerpt:        textValue(item.Excerpt),
 		Content:        item.Content,
+		ContentJSON:    parseJSON(item.ContentJson),
 		CoverImageURL:  textValue(item.CoverImageUrl),
 		Type:           item.Type,
 		SourceName:     textValue(item.SourceName),
@@ -158,4 +161,15 @@ func timestamptzValue(value pgtype.Timestamptz) string {
 		return ""
 	}
 	return value.Time.UTC().Format(time.RFC3339)
+}
+
+func parseJSON(value []byte) any {
+	if len(value) == 0 {
+		return nil
+	}
+	var parsed any
+	if err := json.Unmarshal(value, &parsed); err != nil {
+		return nil
+	}
+	return parsed
 }

@@ -29,6 +29,7 @@ INSERT INTO articles (
   title,
   excerpt,
   content,
+  content_json,
   cover_image_url,
   type,
   status,
@@ -54,6 +55,7 @@ INSERT INTO articles (
   $12,
   $13,
   $14
+  ,$15
 )
 RETURNING *;
 
@@ -89,13 +91,14 @@ SET
   title = $2,
   excerpt = $3,
   content = $4,
-  cover_image_url = $5,
-  type = $6,
-  source_name = $7,
-  source_url = $8,
-  seo_title = $9,
-  seo_description = $10,
-  is_featured = $11
+  content_json = $5,
+  cover_image_url = $6,
+  type = $7,
+  source_name = $8,
+  source_url = $9,
+  seo_title = $10,
+  seo_description = $11,
+  is_featured = $12
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
