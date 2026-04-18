@@ -21,6 +21,7 @@ import (
 	appcms "github.com/rnrnshn/oportunidades-api/internal/cms"
 	appmentorship "github.com/rnrnshn/oportunidades-api/internal/mentorship"
 	appopportunities "github.com/rnrnshn/oportunidades-api/internal/opportunities"
+	appreports "github.com/rnrnshn/oportunidades-api/internal/reports"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/db"
 	appmiddleware "github.com/rnrnshn/oportunidades-api/pkg/middleware"
@@ -133,6 +134,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	opportunitiesRepository := appopportunities.NewPostgresRepository(pool)
 	opportunitiesService := appopportunities.NewService(opportunitiesRepository)
 	opportunitiesHandler := appopportunities.NewHandler(opportunitiesService)
+	reportsRepository := appreports.NewPostgresRepository(pool)
+	reportsService := appreports.NewService(reportsRepository)
+	reportsHandler := appreports.NewHandler(reportsService)
 
 	v1 := app.Group("/v1")
 	authGroup := v1.Group("/auth")
@@ -153,6 +157,8 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	adminGroup := v1.Group("/admin", appauth.RequireRole(authService, "admin"))
 	adminGroup.Post("/articles/:id/publish", adminHandler.PublishArticle)
 	adminGroup.Post("/opportunities/:id/verify", adminHandler.VerifyOpportunity)
+	adminGroup.Get("/reports", adminHandler.ListReports)
+	adminGroup.Patch("/reports/:id", adminHandler.UpdateReportStatus)
 
 	articlesGroup := v1.Group("/articles")
 	articlesGroup.Get("", articlesHandler.ListArticles)
@@ -172,6 +178,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	opportunitiesGroup := v1.Group("/opportunities")
 	opportunitiesGroup.Get("", opportunitiesHandler.ListOpportunities)
 	opportunitiesGroup.Get("/:slug", opportunitiesHandler.GetOpportunityBySlug)
+
+	reportsGroup := v1.Group("/reports", appauth.RequireAuth(authService))
+	reportsGroup.Post("", reportsHandler.Create)
 }
 
 func getEnvAsInt(key string, fallback int) int {

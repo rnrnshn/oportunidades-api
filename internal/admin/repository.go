@@ -15,4 +15,8 @@ type Repository interface {
 	PublishArticle(ctx context.Context, id pgtype.UUID) (queries.Article, error)
 	GetOpportunityByID(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error)
 	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error)
+	ListReports(ctx context.Context, params queries.ListReportsParams) ([]queries.Report, error)
+	CountReports(ctx context.Context) (int64, error)
+	GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error)
+	UpdateReportStatus(ctx context.Context, params queries.UpdateReportStatusParams) (queries.Report, error)
 }

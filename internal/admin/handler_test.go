@@ -19,6 +19,10 @@ type mockRepository struct {
 	publishArticleFn     func(context.Context, pgtype.UUID) (queries.Article, error)
 	getOpportunityByIDFn func(context.Context, pgtype.UUID) (queries.Opportunity, error)
 	verifyOpportunityFn  func(context.Context, pgtype.UUID) (queries.Opportunity, error)
+	listReportsFn        func(context.Context, queries.ListReportsParams) ([]queries.Report, error)
+	countReportsFn       func(context.Context) (int64, error)
+	getReportByIDFn      func(context.Context, pgtype.UUID) (queries.Report, error)
+	updateReportStatusFn func(context.Context, queries.UpdateReportStatusParams) (queries.Report, error)
 }
 
 func (m *mockRepository) GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
@@ -32,6 +36,18 @@ func (m *mockRepository) GetOpportunityByID(ctx context.Context, id pgtype.UUID)
 }
 func (m *mockRepository) VerifyOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	return m.verifyOpportunityFn(ctx, id)
+}
+func (m *mockRepository) ListReports(ctx context.Context, params queries.ListReportsParams) ([]queries.Report, error) {
+	return m.listReportsFn(ctx, params)
+}
+func (m *mockRepository) CountReports(ctx context.Context) (int64, error) {
+	return m.countReportsFn(ctx)
+}
+func (m *mockRepository) GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error) {
+	return m.getReportByIDFn(ctx, id)
+}
+func (m *mockRepository) UpdateReportStatus(ctx context.Context, params queries.UpdateReportStatusParams) (queries.Report, error) {
+	return m.updateReportStatusFn(ctx, params)
 }
 
 func TestHandlerPublishArticle(t *testing.T) {

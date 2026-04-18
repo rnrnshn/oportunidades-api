@@ -47,3 +47,27 @@ func (r *PostgresRepository) VerifyOpportunity(ctx context.Context, id pgtype.UU
 	}
 	return item, err
 }
+
+func (r *PostgresRepository) ListReports(ctx context.Context, params queries.ListReportsParams) ([]queries.Report, error) {
+	return r.queries.ListReports(ctx, params)
+}
+
+func (r *PostgresRepository) CountReports(ctx context.Context) (int64, error) {
+	return r.queries.CountReports(ctx)
+}
+
+func (r *PostgresRepository) GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error) {
+	item, err := r.queries.GetReportByID(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Report{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) UpdateReportStatus(ctx context.Context, params queries.UpdateReportStatusParams) (queries.Report, error) {
+	item, err := r.queries.UpdateReportStatus(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Report{}, ErrNotFound
+	}
+	return item, err
+}
