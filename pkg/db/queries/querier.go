@@ -38,6 +38,7 @@ type Querier interface {
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 }

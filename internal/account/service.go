@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct{ repo Repository }
@@ -28,6 +29,18 @@ type UpdateProfileInput struct {
 	UserID    string
 	Name      string
 	AvatarURL string
+}
+
+type ChangePasswordInput struct {
+	UserID          string
+	CurrentPassword string
+	NewPassword     string
+}
+
+type MessageResult struct {
+	Data struct {
+		Message string `json:"message"`
+	} `json:"data"`
 }
 
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
@@ -69,6 +82,39 @@ func (s *Service) UpdateProfile(ctx context.Context, input UpdateProfileInput) (
 		return nil, err
 	}
 	return &ProfileResult{Data: profile}, nil
+}
+
+func (s *Service) ChangePassword(ctx context.Context, input ChangePasswordInput) (*MessageResult, error) {
+	parsedID, err := uuid.Parse(strings.TrimSpace(input.UserID))
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	if strings.TrimSpace(input.CurrentPassword) == "" || strings.TrimSpace(input.NewPassword) == "" {
+		return nil, fmt.Errorf("account: current and new passwords are required")
+	}
+	if len(input.NewPassword) < 8 {
+		return nil, fmt.Errorf("account: new password must be at least 8 characters")
+	}
+	user, err := s.repo.GetUserByID(ctx, uuidToPg(parsedID))
+	if err != nil {
+		return nil, err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.CurrentPassword)); err != nil {
+		return nil, fmt.Errorf("account: current password is invalid")
+	}
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("account: hash password: %w", err)
+	}
+	if _, err := s.repo.UpdateUserPassword(ctx, queries.UpdateUserPasswordParams{
+		ID:           uuidToPg(parsedID),
+		PasswordHash: string(passwordHash),
+	}); err != nil {
+		return nil, err
+	}
+	result := &MessageResult{}
+	result.Data.Message = "Password actualizada com sucesso."
+	return result, nil
 }
 
 func mapProfile(user queries.User) (Profile, error) {

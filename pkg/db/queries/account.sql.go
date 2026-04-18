@@ -11,6 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET
+  password_hash = $2
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+`
+
+type UpdateUserPasswordParams struct {
+	ID           pgtype.UUID `json:"id"`
+	PasswordHash string      `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET

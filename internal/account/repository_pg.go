@@ -31,3 +31,11 @@ func (r *PostgresRepository) UpdateUserProfile(ctx context.Context, params queri
 	}
 	return user, err
 }
+
+func (r *PostgresRepository) UpdateUserPassword(ctx context.Context, params queries.UpdateUserPasswordParams) (queries.User, error) {
+	user, err := r.queries.UpdateUserPassword(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.User{}, ErrNotFound
+	}
+	return user, err
+}

@@ -53,3 +53,21 @@ func TestHandlerUpdateMeValidatesName(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerChangePasswordValidatesPayload(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/account/password", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: uuid.NewString(), Role: "user"})
+		return handler.ChangePassword(c)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/account/password", strings.NewReader(`{"current_password":"","new_password":""}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
