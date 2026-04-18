@@ -153,7 +153,10 @@ func TestHandlerUpdateArticle(t *testing.T) {
 		},
 	}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
-	app.Patch("/v1/cms/articles/:id", handler.UpdateArticle)
+	app.Patch("/v1/cms/articles/:id", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
+		return handler.UpdateArticle(c)
+	})
 	req := httptest.NewRequest(http.MethodPatch, "/v1/cms/articles/"+articleID.String(), strings.NewReader(`{"title":"Artigo Editado","content":"Conteudo editado","type":"news"}`))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	res, err := app.Test(req)
@@ -166,9 +169,13 @@ func TestHandlerUpdateArticle(t *testing.T) {
 }
 
 func TestHandlerUpdateOpportunityValidatesID(t *testing.T) {
+	userID := uuid.New()
 	handler := NewHandler(NewService(&mockRepository{}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
-	app.Patch("/v1/cms/opportunities/:id", handler.UpdateOpportunity)
+	app.Patch("/v1/cms/opportunities/:id", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
+		return handler.UpdateOpportunity(c)
+	})
 	req := httptest.NewRequest(http.MethodPatch, "/v1/cms/opportunities/bad-id", strings.NewReader(`{"title":"Teste"}`))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	res, err := app.Test(req)
@@ -203,9 +210,13 @@ func TestHandlerCreateUniversity(t *testing.T) {
 }
 
 func TestHandlerCreateCourseValidatesUniversityID(t *testing.T) {
+	userID := uuid.New()
 	handler := NewHandler(NewService(&mockRepository{}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
-	app.Post("/v1/cms/courses", handler.CreateCourse)
+	app.Post("/v1/cms/courses", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
+		return handler.CreateCourse(c)
+	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/cms/courses", strings.NewReader(`{"university_id":"bad-id","name":"Curso","area":"Tecnologia","level":"licenciatura","regime":"presencial"}`))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	res, err := app.Test(req)
@@ -214,5 +225,27 @@ func TestHandlerCreateCourseValidatesUniversityID(t *testing.T) {
 	}
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerGetArticleForbiddenForOtherCmsPartner(t *testing.T) {
+	articleID := uuid.New()
+	ownerID := uuid.New()
+	otherID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{getArticleByIDFn: func(context.Context, pgtype.UUID) (queries.Article, error) {
+		return queries.Article{ID: pgtype.UUID{Bytes: [16]byte(articleID), Valid: true}, Slug: "a", Title: "A", Content: "c", Type: "guide", AuthorID: pgtype.UUID{Bytes: [16]byte(ownerID), Valid: true}}, nil
+	}}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/cms/articles/:id", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: otherID.String(), Role: "cms_partner"})
+		return handler.GetArticle(c)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/cms/articles/"+articleID.String(), nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", res.StatusCode)
 	}
 }

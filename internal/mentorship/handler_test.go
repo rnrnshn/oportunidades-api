@@ -97,3 +97,45 @@ func TestHandlerCreateSessionRequest(t *testing.T) {
 		t.Fatalf("expected 201, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerListSessions(t *testing.T) {
+	userID := uuid.New()
+	sessionID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{
+		listMentorshipSessionsForUserFn: func(context.Context, queries.ListMentorshipSessionsForUserParams) ([]queries.MentorshipSession, error) {
+			return []queries.MentorshipSession{{ID: uuidToPg(sessionID), MentorID: uuidToPg(uuid.New()), RequesterID: uuidToPg(userID), Message: "Oi", Status: "pending"}}, nil
+		},
+		countMentorshipSessionsForUserFn: func(context.Context, pgtype.UUID) (int64, error) { return 1, nil },
+	}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/mentorship/sessions", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "user"})
+		return handler.ListSessions(c)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/mentorship/sessions", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerUpdateSessionStatusValidatesPayload(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Patch("/v1/mentorship/sessions/:id", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: uuid.NewString(), Role: "user"})
+		return handler.UpdateSessionStatus(c)
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/v1/mentorship/sessions/bad-id", strings.NewReader(`{"status":"","scheduled_at":"bad-date"}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}

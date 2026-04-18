@@ -23,6 +23,11 @@ const (
 
 type Service struct{ repo Repository }
 
+type Actor struct {
+	UserID string
+	Role   string
+}
+
 type PaginationParams struct {
 	Page    int
 	PerPage int
@@ -169,7 +174,7 @@ type CourseItem struct {
 
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
 
-func (s *Service) ListArticles(ctx context.Context, params PaginationParams) (*ArticlesResult, error) {
+func (s *Service) ListArticles(ctx context.Context, actor Actor, params PaginationParams) (*ArticlesResult, error) {
 	page, perPage := normalizePagination(params)
 	items, err := s.repo.ListCMSArticles(ctx, queries.ListCMSArticlesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
 	if err != nil {
@@ -178,6 +183,10 @@ func (s *Service) ListArticles(ctx context.Context, params PaginationParams) (*A
 	total, err := s.repo.CountCMSArticles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count articles: %w", err)
+	}
+	items, total, err = s.filterArticlesByActor(items, total, actor, params)
+	if err != nil {
+		return nil, err
 	}
 	data := make([]ArticleItem, 0, len(items))
 	for _, item := range items {
@@ -190,7 +199,7 @@ func (s *Service) ListArticles(ctx context.Context, params PaginationParams) (*A
 	return &ArticlesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
 }
 
-func (s *Service) GetArticle(ctx context.Context, id string) (*ArticleResult, error) {
+func (s *Service) GetArticle(ctx context.Context, actor Actor, id string) (*ArticleResult, error) {
 	articleID, err := uuid.Parse(strings.TrimSpace(id))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid article id: %w", err)
@@ -199,6 +208,9 @@ func (s *Service) GetArticle(ctx context.Context, id string) (*ArticleResult, er
 	if err != nil {
 		return nil, fmt.Errorf("cms: get article: %w", err)
 	}
+	if !canManageArticle(actor, article) {
+		return nil, ErrForbidden
+	}
 	mapped, err := mapArticle(article)
 	if err != nil {
 		return nil, err
@@ -206,7 +218,7 @@ func (s *Service) GetArticle(ctx context.Context, id string) (*ArticleResult, er
 	return &ArticleResult{Data: mapped}, nil
 }
 
-func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (*ArticleResult, error) {
+func (s *Service) CreateArticle(ctx context.Context, actor Actor, input CreateArticleInput) (*ArticleResult, error) {
 	authorID, err := uuid.Parse(strings.TrimSpace(input.AuthorID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid author id: %w", err)
@@ -240,7 +252,7 @@ func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (
 	return &ArticleResult{Data: mapped}, nil
 }
 
-func (s *Service) UpdateArticle(ctx context.Context, input CreateArticleInput) (*ArticleResult, error) {
+func (s *Service) UpdateArticle(ctx context.Context, actor Actor, input CreateArticleInput) (*ArticleResult, error) {
 	articleID, err := uuid.Parse(strings.TrimSpace(input.ID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid article id: %w", err)
@@ -248,6 +260,9 @@ func (s *Service) UpdateArticle(ctx context.Context, input CreateArticleInput) (
 	existingArticle, err := s.repo.GetArticleByID(ctx, uuidToPg(articleID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: get article: %w", err)
+	}
+	if !canManageArticle(actor, existingArticle) {
+		return nil, ErrForbidden
 	}
 	title := chooseString(input.Title, existingArticle.Title)
 	content := chooseString(input.Content, existingArticle.Content)
@@ -278,7 +293,7 @@ func (s *Service) UpdateArticle(ctx context.Context, input CreateArticleInput) (
 	return &ArticleResult{Data: mapped}, nil
 }
 
-func (s *Service) ListUniversities(ctx context.Context, params PaginationParams) (*UniversitiesResult, error) {
+func (s *Service) ListUniversities(ctx context.Context, actor Actor, params PaginationParams) (*UniversitiesResult, error) {
 	page, perPage := normalizePagination(params)
 	items, err := s.repo.ListCMSUniversities(ctx, queries.ListCMSUniversitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
 	if err != nil {
@@ -287,6 +302,10 @@ func (s *Service) ListUniversities(ctx context.Context, params PaginationParams)
 	total, err := s.repo.CountCMSUniversities(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count universities: %w", err)
+	}
+	items, total, err = s.filterUniversitiesByActor(items, total, actor, params)
+	if err != nil {
+		return nil, err
 	}
 	data := make([]UniversityItem, 0, len(items))
 	for _, item := range items {
@@ -299,7 +318,7 @@ func (s *Service) ListUniversities(ctx context.Context, params PaginationParams)
 	return &UniversitiesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
 }
 
-func (s *Service) GetUniversity(ctx context.Context, id string) (*UniversityResult, error) {
+func (s *Service) GetUniversity(ctx context.Context, actor Actor, id string) (*UniversityResult, error) {
 	universityID, err := uuid.Parse(strings.TrimSpace(id))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid university id: %w", err)
@@ -308,6 +327,9 @@ func (s *Service) GetUniversity(ctx context.Context, id string) (*UniversityResu
 	if err != nil {
 		return nil, fmt.Errorf("cms: get university: %w", err)
 	}
+	if !canManageUniversity(actor, item) {
+		return nil, ErrForbidden
+	}
 	mapped, err := mapUniversity(item)
 	if err != nil {
 		return nil, err
@@ -315,7 +337,7 @@ func (s *Service) GetUniversity(ctx context.Context, id string) (*UniversityResu
 	return &UniversityResult{Data: mapped}, nil
 }
 
-func (s *Service) CreateUniversity(ctx context.Context, input CreateUniversityInput) (*UniversityResult, error) {
+func (s *Service) CreateUniversity(ctx context.Context, actor Actor, input CreateUniversityInput) (*UniversityResult, error) {
 	createdBy, err := uuid.Parse(strings.TrimSpace(input.CreatedBy))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid creator id: %w", err)
@@ -347,7 +369,7 @@ func (s *Service) CreateUniversity(ctx context.Context, input CreateUniversityIn
 	return &UniversityResult{Data: mapped}, nil
 }
 
-func (s *Service) UpdateUniversity(ctx context.Context, input CreateUniversityInput) (*UniversityResult, error) {
+func (s *Service) UpdateUniversity(ctx context.Context, actor Actor, input CreateUniversityInput) (*UniversityResult, error) {
 	universityID, err := uuid.Parse(strings.TrimSpace(input.ID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid university id: %w", err)
@@ -355,6 +377,9 @@ func (s *Service) UpdateUniversity(ctx context.Context, input CreateUniversityIn
 	existing, err := s.repo.GetUniversityByID(ctx, uuidToPg(universityID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: get university: %w", err)
+	}
+	if !canManageUniversity(actor, existing) {
+		return nil, ErrForbidden
 	}
 	name := chooseString(input.Name, existing.Name)
 	typeValue := chooseString(input.Type, existing.Type)
@@ -383,7 +408,7 @@ func (s *Service) UpdateUniversity(ctx context.Context, input CreateUniversityIn
 	return &UniversityResult{Data: mapped}, nil
 }
 
-func (s *Service) ListCourses(ctx context.Context, params PaginationParams) (*CoursesResult, error) {
+func (s *Service) ListCourses(ctx context.Context, actor Actor, params PaginationParams) (*CoursesResult, error) {
 	page, perPage := normalizePagination(params)
 	items, err := s.repo.ListCMSCourses(ctx, queries.ListCMSCoursesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
 	if err != nil {
@@ -392,6 +417,10 @@ func (s *Service) ListCourses(ctx context.Context, params PaginationParams) (*Co
 	total, err := s.repo.CountCMSCourses(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count courses: %w", err)
+	}
+	items, total, err = s.filterCoursesByActor(ctx, items, total, actor, params)
+	if err != nil {
+		return nil, err
 	}
 	data := make([]CourseItem, 0, len(items))
 	for _, item := range items {
@@ -404,7 +433,7 @@ func (s *Service) ListCourses(ctx context.Context, params PaginationParams) (*Co
 	return &CoursesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
 }
 
-func (s *Service) GetCourse(ctx context.Context, id string) (*CourseResult, error) {
+func (s *Service) GetCourse(ctx context.Context, actor Actor, id string) (*CourseResult, error) {
 	courseID, err := uuid.Parse(strings.TrimSpace(id))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid course id: %w", err)
@@ -413,6 +442,13 @@ func (s *Service) GetCourse(ctx context.Context, id string) (*CourseResult, erro
 	if err != nil {
 		return nil, fmt.Errorf("cms: get course: %w", err)
 	}
+	ok, err := s.canManageCourse(ctx, actor, item)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
 	mapped, err := mapCourse(item)
 	if err != nil {
 		return nil, err
@@ -420,13 +456,20 @@ func (s *Service) GetCourse(ctx context.Context, id string) (*CourseResult, erro
 	return &CourseResult{Data: mapped}, nil
 }
 
-func (s *Service) CreateCourse(ctx context.Context, input CreateCourseInput) (*CourseResult, error) {
+func (s *Service) CreateCourse(ctx context.Context, actor Actor, input CreateCourseInput) (*CourseResult, error) {
 	universityID, err := uuid.Parse(strings.TrimSpace(input.UniversityID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid university id: %w", err)
 	}
 	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Area) == "" || strings.TrimSpace(input.Level) == "" || strings.TrimSpace(input.Regime) == "" {
 		return nil, fmt.Errorf("cms: course required fields are missing")
+	}
+	university, err := s.repo.GetUniversityByID(ctx, uuidToPg(universityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get university for course: %w", err)
+	}
+	if !canManageUniversity(actor, university) {
+		return nil, ErrForbidden
 	}
 	item, err := s.repo.CreateCourse(ctx, queries.CreateCourseParams{
 		Slug:              slugify(input.Name),
@@ -449,7 +492,7 @@ func (s *Service) CreateCourse(ctx context.Context, input CreateCourseInput) (*C
 	return &CourseResult{Data: mapped}, nil
 }
 
-func (s *Service) UpdateCourse(ctx context.Context, input CreateCourseInput) (*CourseResult, error) {
+func (s *Service) UpdateCourse(ctx context.Context, actor Actor, input CreateCourseInput) (*CourseResult, error) {
 	courseID, err := uuid.Parse(strings.TrimSpace(input.ID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid course id: %w", err)
@@ -458,6 +501,13 @@ func (s *Service) UpdateCourse(ctx context.Context, input CreateCourseInput) (*C
 	if err != nil {
 		return nil, fmt.Errorf("cms: get course: %w", err)
 	}
+	ok, err := s.canManageCourse(ctx, actor, existing)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
 	universityID := existing.UniversityID
 	if strings.TrimSpace(input.UniversityID) != "" {
 		parsedUniversityID, err := uuid.Parse(strings.TrimSpace(input.UniversityID))
@@ -465,6 +515,13 @@ func (s *Service) UpdateCourse(ctx context.Context, input CreateCourseInput) (*C
 			return nil, fmt.Errorf("cms: invalid university id: %w", err)
 		}
 		universityID = uuidToPg(parsedUniversityID)
+		university, err := s.repo.GetUniversityByID(ctx, universityID)
+		if err != nil {
+			return nil, fmt.Errorf("cms: get university for course update: %w", err)
+		}
+		if !canManageUniversity(actor, university) {
+			return nil, ErrForbidden
+		}
 	}
 	name := chooseString(input.Name, existing.Name)
 	area := chooseString(input.Area, existing.Area)
@@ -502,7 +559,7 @@ func (s *Service) UpdateCourse(ctx context.Context, input CreateCourseInput) (*C
 	return &CourseResult{Data: mapped}, nil
 }
 
-func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams) (*OpportunitiesResult, error) {
+func (s *Service) ListOpportunities(ctx context.Context, actor Actor, params PaginationParams) (*OpportunitiesResult, error) {
 	page, perPage := normalizePagination(params)
 	items, err := s.repo.ListCMSOpportunities(ctx, queries.ListCMSOpportunitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
 	if err != nil {
@@ -511,6 +568,10 @@ func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams
 	total, err := s.repo.CountCMSOpportunities(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count opportunities: %w", err)
+	}
+	items, total, err = s.filterOpportunitiesByActor(items, total, actor, params)
+	if err != nil {
+		return nil, err
 	}
 	data := make([]OpportunityItem, 0, len(items))
 	for _, item := range items {
@@ -523,7 +584,7 @@ func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams
 	return &OpportunitiesResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
 }
 
-func (s *Service) GetOpportunity(ctx context.Context, id string) (*OpportunityResult, error) {
+func (s *Service) GetOpportunity(ctx context.Context, actor Actor, id string) (*OpportunityResult, error) {
 	opportunityID, err := uuid.Parse(strings.TrimSpace(id))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid opportunity id: %w", err)
@@ -532,6 +593,9 @@ func (s *Service) GetOpportunity(ctx context.Context, id string) (*OpportunityRe
 	if err != nil {
 		return nil, fmt.Errorf("cms: get opportunity: %w", err)
 	}
+	if !canManageOpportunity(actor, opportunity) {
+		return nil, ErrForbidden
+	}
 	mapped, err := mapOpportunity(opportunity)
 	if err != nil {
 		return nil, err
@@ -539,7 +603,7 @@ func (s *Service) GetOpportunity(ctx context.Context, id string) (*OpportunityRe
 	return &OpportunityResult{Data: mapped}, nil
 }
 
-func (s *Service) CreateOpportunity(ctx context.Context, input CreateOpportunityInput) (*OpportunityResult, error) {
+func (s *Service) CreateOpportunity(ctx context.Context, actor Actor, input CreateOpportunityInput) (*OpportunityResult, error) {
 	publishedBy, err := uuid.Parse(strings.TrimSpace(input.PublishedBy))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid publisher id: %w", err)
@@ -581,7 +645,7 @@ func (s *Service) CreateOpportunity(ctx context.Context, input CreateOpportunity
 	return &OpportunityResult{Data: mapped}, nil
 }
 
-func (s *Service) UpdateOpportunity(ctx context.Context, input CreateOpportunityInput) (*OpportunityResult, error) {
+func (s *Service) UpdateOpportunity(ctx context.Context, actor Actor, input CreateOpportunityInput) (*OpportunityResult, error) {
 	opportunityID, err := uuid.Parse(strings.TrimSpace(input.ID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: invalid opportunity id: %w", err)
@@ -589,6 +653,9 @@ func (s *Service) UpdateOpportunity(ctx context.Context, input CreateOpportunity
 	existingOpportunity, err := s.repo.GetOpportunityByID(ctx, uuidToPg(opportunityID))
 	if err != nil {
 		return nil, fmt.Errorf("cms: get opportunity: %w", err)
+	}
+	if !canManageOpportunity(actor, existingOpportunity) {
+		return nil, ErrForbidden
 	}
 	title := chooseString(input.Title, existingOpportunity.Title)
 	opportunityType := chooseString(input.Type, existingOpportunity.Type)
@@ -729,6 +796,113 @@ func buildMeta(total int64, page int, perPage int) PaginationMeta {
 		totalPages = int((total + int64(perPage) - 1) / int64(perPage))
 	}
 	return PaginationMeta{Total: total, Page: page, PerPage: perPage, TotalPages: totalPages}
+}
+
+func canManageArticle(actor Actor, article queries.Article) bool {
+	if actor.Role == "admin" {
+		return true
+	}
+	actorID, err := uuid.Parse(actor.UserID)
+	if err != nil {
+		return false
+	}
+	return sameUUID(article.AuthorID, actorID)
+}
+
+func canManageOpportunity(actor Actor, opportunity queries.Opportunity) bool {
+	if actor.Role == "admin" {
+		return true
+	}
+	actorID, err := uuid.Parse(actor.UserID)
+	if err != nil {
+		return false
+	}
+	return sameUUID(opportunity.PublishedBy, actorID)
+}
+
+func canManageUniversity(actor Actor, university queries.University) bool {
+	if actor.Role == "admin" {
+		return true
+	}
+	actorID, err := uuid.Parse(actor.UserID)
+	if err != nil {
+		return false
+	}
+	return sameUUID(university.CreatedBy, actorID)
+}
+
+func (s *Service) canManageCourse(ctx context.Context, actor Actor, course queries.Course) (bool, error) {
+	if actor.Role == "admin" {
+		return true, nil
+	}
+	university, err := s.repo.GetUniversityByID(ctx, course.UniversityID)
+	if err != nil {
+		return false, fmt.Errorf("cms: get university for course ownership: %w", err)
+	}
+	return canManageUniversity(actor, university), nil
+}
+
+func (s *Service) filterArticlesByActor(items []queries.Article, total int64, actor Actor, params PaginationParams) ([]queries.Article, int64, error) {
+	if actor.Role == "admin" {
+		return items, total, nil
+	}
+	filtered := make([]queries.Article, 0, len(items))
+	for _, item := range items {
+		if canManageArticle(actor, item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, int64(len(filtered)), nil
+}
+
+func (s *Service) filterOpportunitiesByActor(items []queries.Opportunity, total int64, actor Actor, params PaginationParams) ([]queries.Opportunity, int64, error) {
+	if actor.Role == "admin" {
+		return items, total, nil
+	}
+	filtered := make([]queries.Opportunity, 0, len(items))
+	for _, item := range items {
+		if canManageOpportunity(actor, item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, int64(len(filtered)), nil
+}
+
+func (s *Service) filterUniversitiesByActor(items []queries.University, total int64, actor Actor, params PaginationParams) ([]queries.University, int64, error) {
+	if actor.Role == "admin" {
+		return items, total, nil
+	}
+	filtered := make([]queries.University, 0, len(items))
+	for _, item := range items {
+		if canManageUniversity(actor, item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, int64(len(filtered)), nil
+}
+
+func (s *Service) filterCoursesByActor(ctx context.Context, items []queries.Course, total int64, actor Actor, params PaginationParams) ([]queries.Course, int64, error) {
+	if actor.Role == "admin" {
+		return items, total, nil
+	}
+	filtered := make([]queries.Course, 0, len(items))
+	for _, item := range items {
+		ok, err := s.canManageCourse(ctx, actor, item)
+		if err != nil {
+			return nil, 0, err
+		}
+		if ok {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, int64(len(filtered)), nil
+}
+
+func sameUUID(value pgtype.UUID, compare uuid.UUID) bool {
+	if !value.Valid {
+		return false
+	}
+	return uuid.UUID(value.Bytes) == compare
 }
 
 func uuidToPg(value uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte(value), Valid: true} }

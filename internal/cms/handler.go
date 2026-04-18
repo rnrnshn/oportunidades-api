@@ -70,7 +70,11 @@ type updateCourseRequest = createCourseRequest
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
 func (h *Handler) ListArticles(c *fiber.Ctx) error {
-	result, err := h.service.ListArticles(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.ListArticles(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -78,13 +82,17 @@ func (h *Handler) ListArticles(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetArticle(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
 	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.GetArticle(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	result, err := h.service.GetArticle(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}
@@ -107,7 +115,7 @@ func (h *Handler) CreateArticle(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.CreateArticle(c.UserContext(), CreateArticleInput{
+	result, err := h.service.CreateArticle(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateArticleInput{
 		AuthorID: currentUser.ID,
 		Title:    strings.TrimSpace(request.Title), Excerpt: strings.TrimSpace(request.Excerpt), Content: strings.TrimSpace(request.Content), CoverImageURL: strings.TrimSpace(request.CoverImageURL),
 		Type: strings.TrimSpace(request.Type), SourceName: strings.TrimSpace(request.SourceName), SourceURL: strings.TrimSpace(request.SourceURL), SEOTitle: strings.TrimSpace(request.SEOTitle), SEODescription: strings.TrimSpace(request.SEODescription), IsFeatured: request.IsFeatured,
@@ -137,7 +145,7 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.CreateOpportunity(c.UserContext(), CreateOpportunityInput{
+	result, err := h.service.CreateOpportunity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateOpportunityInput{
 		PublishedBy: currentUser.ID,
 		Title:       strings.TrimSpace(request.Title), Type: strings.TrimSpace(request.Type), EntityName: strings.TrimSpace(request.EntityName), Description: strings.TrimSpace(request.Description), Requirements: strings.TrimSpace(request.Requirements), Deadline: strings.TrimSpace(request.Deadline), ApplyURL: strings.TrimSpace(request.ApplyURL), Country: strings.TrimSpace(request.Country), Language: strings.TrimSpace(request.Language), Area: strings.TrimSpace(request.Area),
 	})
@@ -148,7 +156,11 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 }
 
 func (h *Handler) ListUniversities(c *fiber.Ctx) error {
-	result, err := h.service.ListUniversities(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.ListUniversities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -156,13 +168,17 @@ func (h *Handler) ListUniversities(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetUniversity(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
 	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.GetUniversity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	result, err := h.service.GetUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}
@@ -185,7 +201,7 @@ func (h *Handler) CreateUniversity(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.CreateUniversity(c.UserContext(), CreateUniversityInput{CreatedBy: currentUser.ID, Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	result, err := h.service.CreateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateUniversityInput{CreatedBy: currentUser.ID, Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -203,7 +219,11 @@ func (h *Handler) UpdateUniversity(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.UpdateUniversity(c.UserContext(), CreateUniversityInput{ID: strings.TrimSpace(c.Params("id")), Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.UpdateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateUniversityInput{ID: strings.TrimSpace(c.Params("id")), Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -211,7 +231,11 @@ func (h *Handler) UpdateUniversity(c *fiber.Ctx) error {
 }
 
 func (h *Handler) ListCourses(c *fiber.Ctx) error {
-	result, err := h.service.ListCourses(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.ListCourses(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -219,13 +243,17 @@ func (h *Handler) ListCourses(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetCourse(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
 	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.GetCourse(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	result, err := h.service.GetCourse(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}
@@ -233,6 +261,10 @@ func (h *Handler) GetCourse(c *fiber.Ctx) error {
 }
 
 func (h *Handler) CreateCourse(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	var request createCourseRequest
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
@@ -247,7 +279,7 @@ func (h *Handler) CreateCourse(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.CreateCourse(c.UserContext(), CreateCourseInput{UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
+	result, err := h.service.CreateCourse(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateCourseInput{UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -255,6 +287,10 @@ func (h *Handler) CreateCourse(c *fiber.Ctx) error {
 }
 
 func (h *Handler) UpdateCourse(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	var request updateCourseRequest
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
@@ -266,7 +302,7 @@ func (h *Handler) UpdateCourse(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.UpdateCourse(c.UserContext(), CreateCourseInput{ID: strings.TrimSpace(c.Params("id")), UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
+	result, err := h.service.UpdateCourse(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateCourseInput{ID: strings.TrimSpace(c.Params("id")), UniversityID: strings.TrimSpace(request.UniversityID), Name: strings.TrimSpace(request.Name), Area: strings.TrimSpace(request.Area), Level: strings.TrimSpace(request.Level), Regime: strings.TrimSpace(request.Regime), DurationYears: request.DurationYears, HasDurationYears: request.DurationYears > 0, AnnualFee: strings.TrimSpace(request.AnnualFee), EntryRequirements: strings.TrimSpace(request.EntryRequirements)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -274,7 +310,11 @@ func (h *Handler) UpdateCourse(c *fiber.Ctx) error {
 }
 
 func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
-	result, err := h.service.ListOpportunities(c.UserContext(), PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.ListOpportunities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
 	if err != nil {
 		return handleError(err)
 	}
@@ -282,13 +322,17 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 }
 
 func (h *Handler) GetOpportunity(c *fiber.Ctx) error {
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
 	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.GetOpportunity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	result, err := h.service.GetOpportunity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}
@@ -306,7 +350,11 @@ func (h *Handler) UpdateArticle(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.UpdateArticle(c.UserContext(), CreateArticleInput{
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.UpdateArticle(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateArticleInput{
 		ID:             strings.TrimSpace(c.Params("id")),
 		Title:          strings.TrimSpace(request.Title),
 		Excerpt:        strings.TrimSpace(request.Excerpt),
@@ -337,7 +385,11 @@ func (h *Handler) UpdateOpportunity(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.UpdateOpportunity(c.UserContext(), CreateOpportunityInput{
+	currentUser, ok := appauth.CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.UpdateOpportunity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateOpportunityInput{
 		ID:           strings.TrimSpace(c.Params("id")),
 		Title:        strings.TrimSpace(request.Title),
 		Type:         strings.TrimSpace(request.Type),
@@ -360,6 +412,9 @@ func handleError(err error) error {
 	message := err.Error()
 	if errors.Is(err, ErrNotFound) {
 		return apierror.NotFound("Recurso CMS não encontrado.")
+	}
+	if errors.Is(err, ErrForbidden) {
+		return apierror.Forbidden("Não tem permissões para gerir este recurso.")
 	}
 	if strings.Contains(message, "duplicate key value") {
 		return apierror.Conflict("Já existe um recurso com este slug.")

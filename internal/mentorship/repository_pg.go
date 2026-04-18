@@ -38,3 +38,27 @@ func (r *PostgresRepository) GetMentorByID(ctx context.Context, userID pgtype.UU
 func (r *PostgresRepository) CreateMentorshipSession(ctx context.Context, params queries.CreateMentorshipSessionParams) (queries.MentorshipSession, error) {
 	return r.queries.CreateMentorshipSession(ctx, params)
 }
+
+func (r *PostgresRepository) ListMentorshipSessionsForUser(ctx context.Context, params queries.ListMentorshipSessionsForUserParams) ([]queries.MentorshipSession, error) {
+	return r.queries.ListMentorshipSessionsForUser(ctx, params)
+}
+
+func (r *PostgresRepository) CountMentorshipSessionsForUser(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	return r.queries.CountMentorshipSessionsForUser(ctx, userID)
+}
+
+func (r *PostgresRepository) GetMentorshipSessionByID(ctx context.Context, id pgtype.UUID) (queries.MentorshipSession, error) {
+	item, err := r.queries.GetMentorshipSessionByID(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.MentorshipSession{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) UpdateMentorshipSessionStatus(ctx context.Context, params queries.UpdateMentorshipSessionStatusParams) (queries.MentorshipSession, error) {
+	item, err := r.queries.UpdateMentorshipSessionStatus(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.MentorshipSession{}, ErrNotFound
+	}
+	return item, err
+}

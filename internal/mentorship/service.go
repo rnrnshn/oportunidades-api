@@ -54,6 +54,22 @@ type SessionRequestResult struct {
 	Data SessionRequestItem `json:"data"`
 }
 
+type SessionsResult struct {
+	Data []SessionRequestItem `json:"data"`
+	Meta PaginationMeta       `json:"meta"`
+}
+
+type SessionDetailResult struct {
+	Data SessionRequestItem `json:"data"`
+}
+
+type SessionStatusUpdateInput struct {
+	SessionID   string
+	ActorID     string
+	Status      string
+	ScheduledAt string
+}
+
 type MentorItem struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
@@ -169,6 +185,89 @@ func (s *Service) CreateSessionRequest(ctx context.Context, input SessionRequest
 	return &SessionRequestResult{Data: mappedSession}, nil
 }
 
+func (s *Service) ListSessions(ctx context.Context, actorID string, params PaginationParams) (*SessionsResult, error) {
+	actorUUID, err := uuid.Parse(strings.TrimSpace(actorID))
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: invalid actor id: %w", err)
+	}
+	page, perPage := normalizePagination(params)
+	items, err := s.repo.ListMentorshipSessionsForUser(ctx, queries.ListMentorshipSessionsForUserParams{MentorID: uuidToPg(actorUUID), Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: list sessions: %w", err)
+	}
+	total, err := s.repo.CountMentorshipSessionsForUser(ctx, uuidToPg(actorUUID))
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: count sessions: %w", err)
+	}
+	data := make([]SessionRequestItem, 0, len(items))
+	for _, item := range items {
+		mapped, err := mapSession(item)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
+	}
+	return &SessionsResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func (s *Service) GetSession(ctx context.Context, actorID string, sessionID string) (*SessionDetailResult, error) {
+	actorUUID, err := uuid.Parse(strings.TrimSpace(actorID))
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: invalid actor id: %w", err)
+	}
+	sessionUUID, err := uuid.Parse(strings.TrimSpace(sessionID))
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	item, err := s.repo.GetMentorshipSessionByID(ctx, uuidToPg(sessionUUID))
+	if err != nil {
+		return nil, err
+	}
+	if !sameUUID(item.MentorID, actorUUID) && !sameUUID(item.RequesterID, actorUUID) {
+		return nil, ErrNotFound
+	}
+	mapped, err := mapSession(item)
+	if err != nil {
+		return nil, err
+	}
+	return &SessionDetailResult{Data: mapped}, nil
+}
+
+func (s *Service) UpdateSessionStatus(ctx context.Context, input SessionStatusUpdateInput) (*SessionDetailResult, error) {
+	actorUUID, err := uuid.Parse(strings.TrimSpace(input.ActorID))
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: invalid actor id: %w", err)
+	}
+	sessionUUID, err := uuid.Parse(strings.TrimSpace(input.SessionID))
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	item, err := s.repo.GetMentorshipSessionByID(ctx, uuidToPg(sessionUUID))
+	if err != nil {
+		return nil, err
+	}
+	if err := validateSessionTransition(item, actorUUID, strings.TrimSpace(input.Status)); err != nil {
+		return nil, err
+	}
+	scheduledAt := item.ScheduledAt
+	if strings.TrimSpace(input.ScheduledAt) != "" {
+		parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(input.ScheduledAt))
+		if err != nil {
+			return nil, fmt.Errorf("mentorship: invalid scheduled_at: %w", err)
+		}
+		scheduledAt = pgtype.Timestamptz{Time: parsed, Valid: true}
+	}
+	updated, err := s.repo.UpdateMentorshipSessionStatus(ctx, queries.UpdateMentorshipSessionStatusParams{ID: uuidToPg(sessionUUID), Status: strings.TrimSpace(input.Status), ScheduledAt: scheduledAt})
+	if err != nil {
+		return nil, fmt.Errorf("mentorship: update session status: %w", err)
+	}
+	mapped, err := mapSession(updated)
+	if err != nil {
+		return nil, err
+	}
+	return &SessionDetailResult{Data: mapped}, nil
+}
+
 func normalizePagination(params PaginationParams) (int, int) {
 	page := params.Page
 	if page < 1 {
@@ -272,4 +371,44 @@ func timestamptzValue(value pgtype.Timestamptz) string {
 		return ""
 	}
 	return value.Time.UTC().Format(time.RFC3339)
+}
+
+func sameUUID(value pgtype.UUID, compare uuid.UUID) bool {
+	if !value.Valid {
+		return false
+	}
+	return uuid.UUID(value.Bytes) == compare
+}
+
+func validateSessionTransition(session queries.MentorshipSession, actorID uuid.UUID, nextStatus string) error {
+	mentorActor := sameUUID(session.MentorID, actorID)
+	requesterActor := sameUUID(session.RequesterID, actorID)
+	if !mentorActor && !requesterActor {
+		return ErrNotFound
+	}
+	switch nextStatus {
+	case "accepted", "rejected", "completed":
+		if !mentorActor {
+			return fmt.Errorf("mentorship: actor cannot perform mentor-only transition")
+		}
+	case "cancelled":
+		if !mentorActor && !requesterActor {
+			return fmt.Errorf("mentorship: actor cannot cancel session")
+		}
+	default:
+		return fmt.Errorf("mentorship: invalid session status")
+	}
+	switch session.Status {
+	case "pending":
+		if nextStatus == "completed" {
+			return fmt.Errorf("mentorship: invalid session transition")
+		}
+	case "accepted":
+		if nextStatus != "completed" && nextStatus != "cancelled" {
+			return fmt.Errorf("mentorship: invalid session transition")
+		}
+	default:
+		return fmt.Errorf("mentorship: invalid session transition")
+	}
+	return nil
 }

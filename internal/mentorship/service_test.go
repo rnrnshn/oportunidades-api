@@ -12,10 +12,14 @@ import (
 )
 
 type mockRepository struct {
-	listMentorsFn             func(context.Context, queries.ListMentorsParams) ([]queries.ListMentorsRow, error)
-	countMentorsFn            func(context.Context) (int64, error)
-	getMentorByIDFn           func(context.Context, pgtype.UUID) (queries.GetMentorByIDRow, error)
-	createMentorshipSessionFn func(context.Context, queries.CreateMentorshipSessionParams) (queries.MentorshipSession, error)
+	listMentorsFn                    func(context.Context, queries.ListMentorsParams) ([]queries.ListMentorsRow, error)
+	countMentorsFn                   func(context.Context) (int64, error)
+	getMentorByIDFn                  func(context.Context, pgtype.UUID) (queries.GetMentorByIDRow, error)
+	createMentorshipSessionFn        func(context.Context, queries.CreateMentorshipSessionParams) (queries.MentorshipSession, error)
+	listMentorshipSessionsForUserFn  func(context.Context, queries.ListMentorshipSessionsForUserParams) ([]queries.MentorshipSession, error)
+	countMentorshipSessionsForUserFn func(context.Context, pgtype.UUID) (int64, error)
+	getMentorshipSessionByIDFn       func(context.Context, pgtype.UUID) (queries.MentorshipSession, error)
+	updateMentorshipSessionStatusFn  func(context.Context, queries.UpdateMentorshipSessionStatusParams) (queries.MentorshipSession, error)
 }
 
 func (m *mockRepository) ListMentors(ctx context.Context, params queries.ListMentorsParams) ([]queries.ListMentorsRow, error) {
@@ -29,6 +33,18 @@ func (m *mockRepository) GetMentorByID(ctx context.Context, userID pgtype.UUID) 
 }
 func (m *mockRepository) CreateMentorshipSession(ctx context.Context, params queries.CreateMentorshipSessionParams) (queries.MentorshipSession, error) {
 	return m.createMentorshipSessionFn(ctx, params)
+}
+func (m *mockRepository) ListMentorshipSessionsForUser(ctx context.Context, params queries.ListMentorshipSessionsForUserParams) ([]queries.MentorshipSession, error) {
+	return m.listMentorshipSessionsForUserFn(ctx, params)
+}
+func (m *mockRepository) CountMentorshipSessionsForUser(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	return m.countMentorshipSessionsForUserFn(ctx, userID)
+}
+func (m *mockRepository) GetMentorshipSessionByID(ctx context.Context, id pgtype.UUID) (queries.MentorshipSession, error) {
+	return m.getMentorshipSessionByIDFn(ctx, id)
+}
+func (m *mockRepository) UpdateMentorshipSessionStatus(ctx context.Context, params queries.UpdateMentorshipSessionStatusParams) (queries.MentorshipSession, error) {
+	return m.updateMentorshipSessionStatusFn(ctx, params)
 }
 
 func TestListMentors(t *testing.T) {
@@ -92,5 +108,53 @@ func TestCreateSessionRequest(t *testing.T) {
 	}
 	if result.Data.Status != "pending" {
 		t.Fatalf("unexpected status: %s", result.Data.Status)
+	}
+}
+
+func TestListSessions(t *testing.T) {
+	userID := uuid.New()
+	sessionID := uuid.New()
+	service := NewService(&mockRepository{
+		listMentorshipSessionsForUserFn: func(context.Context, queries.ListMentorshipSessionsForUserParams) ([]queries.MentorshipSession, error) {
+			return []queries.MentorshipSession{{ID: uuidToPg(sessionID), MentorID: uuidToPg(uuid.New()), RequesterID: uuidToPg(userID), Message: "Oi", Status: "pending"}}, nil
+		},
+		countMentorshipSessionsForUserFn: func(context.Context, pgtype.UUID) (int64, error) { return 1, nil },
+	})
+	result, err := service.ListSessions(context.Background(), userID.String(), PaginationParams{})
+	if err != nil || len(result.Data) != 1 {
+		t.Fatalf("unexpected result err=%v result=%+v", err, result)
+	}
+}
+
+func TestUpdateSessionStatusByMentor(t *testing.T) {
+	mentorID := uuid.New()
+	requesterID := uuid.New()
+	sessionID := uuid.New()
+	service := NewService(&mockRepository{
+		getMentorshipSessionByIDFn: func(context.Context, pgtype.UUID) (queries.MentorshipSession, error) {
+			return queries.MentorshipSession{ID: uuidToPg(sessionID), MentorID: uuidToPg(mentorID), RequesterID: uuidToPg(requesterID), Message: "Oi", Status: "pending"}, nil
+		},
+		updateMentorshipSessionStatusFn: func(context.Context, queries.UpdateMentorshipSessionStatusParams) (queries.MentorshipSession, error) {
+			return queries.MentorshipSession{ID: uuidToPg(sessionID), MentorID: uuidToPg(mentorID), RequesterID: uuidToPg(requesterID), Message: "Oi", Status: "accepted"}, nil
+		},
+	})
+	result, err := service.UpdateSessionStatus(context.Background(), SessionStatusUpdateInput{SessionID: sessionID.String(), ActorID: mentorID.String(), Status: "accepted"})
+	if err != nil || result.Data.Status != "accepted" {
+		t.Fatalf("unexpected result err=%v result=%+v", err, result)
+	}
+}
+
+func TestUpdateSessionStatusRejectsRequesterAccept(t *testing.T) {
+	mentorID := uuid.New()
+	requesterID := uuid.New()
+	sessionID := uuid.New()
+	service := NewService(&mockRepository{
+		getMentorshipSessionByIDFn: func(context.Context, pgtype.UUID) (queries.MentorshipSession, error) {
+			return queries.MentorshipSession{ID: uuidToPg(sessionID), MentorID: uuidToPg(mentorID), RequesterID: uuidToPg(requesterID), Message: "Oi", Status: "pending"}, nil
+		},
+	})
+	_, err := service.UpdateSessionStatus(context.Background(), SessionStatusUpdateInput{SessionID: sessionID.String(), ActorID: requesterID.String(), Status: "accepted"})
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }

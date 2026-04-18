@@ -200,6 +200,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	mentorshipGroup.Get("/mentors", mentorshipHandler.ListMentors)
 	mentorshipGroup.Get("/mentors/:id", mentorshipHandler.GetMentorByID)
 	mentorshipGroup.Post("/sessions", appauth.RequireAuth(authService), mentorshipHandler.CreateSessionRequest)
+	mentorshipGroup.Get("/sessions", appauth.RequireAuth(authService), mentorshipHandler.ListSessions)
+	mentorshipGroup.Get("/sessions/:id", appauth.RequireAuth(authService), mentorshipHandler.GetSession)
+	mentorshipGroup.Patch("/sessions/:id", appauth.RequireAuth(authService), mentorshipHandler.UpdateSessionStatus)
 
 	opportunitiesGroup := v1.Group("/opportunities")
 	opportunitiesGroup.Get("", opportunitiesHandler.ListOpportunities)

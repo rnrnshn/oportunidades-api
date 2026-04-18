@@ -9,6 +9,7 @@ import (
 )
 
 var ErrNotFound = errors.New("cms: not found")
+var ErrForbidden = errors.New("cms: forbidden")
 
 type Repository interface {
 	CreateArticle(ctx context.Context, params queries.CreateArticleParams) (queries.Article, error)

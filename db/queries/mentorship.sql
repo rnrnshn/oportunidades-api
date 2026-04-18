@@ -81,3 +81,32 @@ INSERT INTO mentorship_sessions (
   $5
 )
 RETURNING *;
+
+-- name: GetMentorshipSessionByID :one
+SELECT *
+FROM mentorship_sessions
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: ListMentorshipSessionsForUser :many
+SELECT *
+FROM mentorship_sessions
+WHERE deleted_at IS NULL
+  AND (mentor_id = $1 OR requester_id = $1)
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountMentorshipSessionsForUser :one
+SELECT COUNT(*)
+FROM mentorship_sessions
+WHERE deleted_at IS NULL
+  AND (mentor_id = $1 OR requester_id = $1);
+
+-- name: UpdateMentorshipSessionStatus :one
+UPDATE mentorship_sessions
+SET
+  status = $2,
+  scheduled_at = $3
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;

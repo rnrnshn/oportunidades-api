@@ -28,6 +28,20 @@ func (q *Queries) CountMentors(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countMentorshipSessionsForUser = `-- name: CountMentorshipSessionsForUser :one
+SELECT COUNT(*)
+FROM mentorship_sessions
+WHERE deleted_at IS NULL
+  AND (mentor_id = $1 OR requester_id = $1)
+`
+
+func (q *Queries) CountMentorshipSessionsForUser(ctx context.Context, mentorID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countMentorshipSessionsForUser, mentorID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createMentorshipSession = `-- name: CreateMentorshipSession :one
 INSERT INTO mentorship_sessions (
   mentor_id,
@@ -155,6 +169,30 @@ func (q *Queries) GetMentorByID(ctx context.Context, userID pgtype.UUID) (GetMen
 	return i, err
 }
 
+const getMentorshipSessionByID = `-- name: GetMentorshipSessionByID :one
+SELECT id, mentor_id, requester_id, message, status, scheduled_at, created_at, updated_at, deleted_at
+FROM mentorship_sessions
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) GetMentorshipSessionByID(ctx context.Context, id pgtype.UUID) (MentorshipSession, error) {
+	row := q.db.QueryRow(ctx, getMentorshipSessionByID, id)
+	var i MentorshipSession
+	err := row.Scan(
+		&i.ID,
+		&i.MentorID,
+		&i.RequesterID,
+		&i.Message,
+		&i.Status,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const listMentors = `-- name: ListMentors :many
 SELECT
   mp.id,
@@ -251,4 +289,82 @@ func (q *Queries) ListMentors(ctx context.Context, arg ListMentorsParams) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const listMentorshipSessionsForUser = `-- name: ListMentorshipSessionsForUser :many
+SELECT id, mentor_id, requester_id, message, status, scheduled_at, created_at, updated_at, deleted_at
+FROM mentorship_sessions
+WHERE deleted_at IS NULL
+  AND (mentor_id = $1 OR requester_id = $1)
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListMentorshipSessionsForUserParams struct {
+	MentorID pgtype.UUID `json:"mentor_id"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+}
+
+func (q *Queries) ListMentorshipSessionsForUser(ctx context.Context, arg ListMentorshipSessionsForUserParams) ([]MentorshipSession, error) {
+	rows, err := q.db.Query(ctx, listMentorshipSessionsForUser, arg.MentorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MentorshipSession{}
+	for rows.Next() {
+		var i MentorshipSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.MentorID,
+			&i.RequesterID,
+			&i.Message,
+			&i.Status,
+			&i.ScheduledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateMentorshipSessionStatus = `-- name: UpdateMentorshipSessionStatus :one
+UPDATE mentorship_sessions
+SET
+  status = $2,
+  scheduled_at = $3
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, mentor_id, requester_id, message, status, scheduled_at, created_at, updated_at, deleted_at
+`
+
+type UpdateMentorshipSessionStatusParams struct {
+	ID          pgtype.UUID        `json:"id"`
+	Status      string             `json:"status"`
+	ScheduledAt pgtype.Timestamptz `json:"scheduled_at"`
+}
+
+func (q *Queries) UpdateMentorshipSessionStatus(ctx context.Context, arg UpdateMentorshipSessionStatusParams) (MentorshipSession, error) {
+	row := q.db.QueryRow(ctx, updateMentorshipSessionStatus, arg.ID, arg.Status, arg.ScheduledAt)
+	var i MentorshipSession
+	err := row.Scan(
+		&i.ID,
+		&i.MentorID,
+		&i.RequesterID,
+		&i.Message,
+		&i.Status,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
