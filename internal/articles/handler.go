@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct{ service *Service }
@@ -14,6 +15,14 @@ type Handler struct{ service *Service }
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
 func (h *Handler) ListArticles(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("type", c.Query("type"), []string{"editorial", "news", "guide"}, "type deve ser editorial, news ou guide.")
+	validationErrors.Bool("featured", c.Query("featured"), "featured deve ser true ou false.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListArticles(c.UserContext(), PaginationParams{
 		Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage),
 	}, Filters{

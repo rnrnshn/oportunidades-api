@@ -32,6 +32,12 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) ListMentors(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListMentors(c.UserContext(), PaginationParams{
 		Page:    queryInt(c, "page", defaultPage),
 		PerPage: queryInt(c, "per_page", defaultPerPage),

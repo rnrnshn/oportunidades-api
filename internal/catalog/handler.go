@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct {
@@ -19,6 +20,14 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) ListUniversities(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("type", c.Query("type"), []string{"publica", "privada", "instituto", "academia"}, "type deve ser publica, privada, instituto ou academia.")
+	validationErrors.Bool("verified", c.Query("verified"), "verified deve ser true ou false.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListUniversities(c.UserContext(), PaginationParams{
 		Page:    queryInt(c, "page", defaultPage),
 		PerPage: queryInt(c, "per_page", defaultPerPage),
@@ -45,6 +54,15 @@ func (h *Handler) GetUniversityBySlug(c *fiber.Ctx) error {
 }
 
 func (h *Handler) ListCourses(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
+	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
+	validationErrors.Enum("level", c.Query("level"), []string{"licenciatura", "mestrado", "doutoramento", "tecnico_medio", "cet"}, "level inválido.")
+	validationErrors.Enum("regime", c.Query("regime"), []string{"presencial", "distancia", "misto"}, "regime inválido.")
+	validationErrors.UUID("university_id", c.Query("university_id"), "university_id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
+	}
 	result, err := h.service.ListCourses(c.UserContext(), PaginationParams{
 		Page:    queryInt(c, "page", defaultPage),
 		PerPage: queryInt(c, "per_page", defaultPerPage),

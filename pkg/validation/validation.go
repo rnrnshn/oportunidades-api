@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,6 +56,41 @@ func (e *Errors) RFC3339(field string, value string, message string) {
 		return
 	}
 	e.items = append(e.items, FieldError{Field: field, Reason: "invalid_datetime", Message: message})
+}
+
+func (e *Errors) Bool(field string, value string, message string) {
+	trimmedValue := strings.TrimSpace(strings.ToLower(value))
+	if trimmedValue == "" {
+		return
+	}
+	if trimmedValue == "true" || trimmedValue == "false" {
+		return
+	}
+	e.items = append(e.items, FieldError{Field: field, Reason: "invalid_boolean", Message: message})
+}
+
+func (e *Errors) Enum(field string, value string, allowed []string, message string) {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return
+	}
+	for _, candidate := range allowed {
+		if trimmedValue == candidate {
+			return
+		}
+	}
+	e.items = append(e.items, FieldError{Field: field, Reason: "invalid_enum", Message: message})
+}
+
+func (e *Errors) IntRange(field string, value string, min int, max int, message string) {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return
+	}
+	parsedValue, err := strconv.Atoi(trimmedValue)
+	if err != nil || parsedValue < min || parsedValue > max {
+		e.items = append(e.items, FieldError{Field: field, Reason: "invalid_number", Message: message})
+	}
 }
 
 func (e *Errors) HasAny() bool {

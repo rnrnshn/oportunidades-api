@@ -132,6 +132,20 @@ func TestHandlerListUniversitiesParsesFilters(t *testing.T) {
 	}
 }
 
+func TestHandlerListCoursesValidatesQuery(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/catalog/courses", handler.ListCourses)
+	req := httptest.NewRequest(http.MethodGet, "/v1/catalog/courses?level=bad&regime=bad&university_id=nope", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
 func pgUUID(value uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: [16]byte(value), Valid: true}
 }

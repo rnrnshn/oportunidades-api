@@ -98,6 +98,20 @@ func TestHandlerCreateSessionRequest(t *testing.T) {
 	}
 }
 
+func TestHandlerListMentorsValidatesQuery(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Get("/v1/mentorship/mentors", handler.ListMentors)
+	req := httptest.NewRequest(http.MethodGet, "/v1/mentorship/mentors?page=0&per_page=500", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
 func TestHandlerListSessions(t *testing.T) {
 	userID := uuid.New()
 	sessionID := uuid.New()
