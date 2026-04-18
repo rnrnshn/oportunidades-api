@@ -152,7 +152,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 
 	cmsGroup := v1.Group("/cms", appauth.RequireRole(authService, "cms_partner", "admin"))
 	cmsGroup.Post("/articles", cmsHandler.CreateArticle)
+	cmsGroup.Patch("/articles/:id", cmsHandler.UpdateArticle)
 	cmsGroup.Post("/opportunities", cmsHandler.CreateOpportunity)
+	cmsGroup.Patch("/opportunities/:id", cmsHandler.UpdateOpportunity)
 
 	adminGroup := v1.Group("/admin", appauth.RequireRole(authService, "admin"))
 	adminGroup.Post("/articles/:id/publish", adminHandler.PublishArticle)

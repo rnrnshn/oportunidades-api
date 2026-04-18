@@ -53,6 +53,23 @@ WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
 
+-- name: UpdateOpportunity :one
+UPDATE opportunities
+SET
+  title = $2,
+  type = $3,
+  entity_name = $4,
+  description = $5,
+  requirements = $6,
+  deadline = $7,
+  apply_url = $8,
+  country = $9,
+  language = $10,
+  area = $11
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: ListOpportunities :many
 SELECT *
 FROM opportunities

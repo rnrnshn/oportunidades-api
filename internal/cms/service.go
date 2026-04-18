@@ -17,6 +17,7 @@ var slugUnsafePattern = regexp.MustCompile(`[^a-z0-9]+`)
 type Service struct{ repo Repository }
 
 type CreateArticleInput struct {
+	ID             string
 	AuthorID       string
 	Title          string
 	Excerpt        string
@@ -27,10 +28,11 @@ type CreateArticleInput struct {
 	SourceURL      string
 	SEOTitle       string
 	SEODescription string
-	IsFeatured     bool
+	IsFeatured     *bool
 }
 
 type CreateOpportunityInput struct {
+	ID           string
 	PublishedBy  string
 	Title        string
 	Type         string
@@ -94,7 +96,7 @@ func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (
 		SourceUrl:      textToPg(input.SourceURL),
 		SeoTitle:       textToPg(input.SEOTitle),
 		SeoDescription: textToPg(input.SEODescription),
-		IsFeatured:     input.IsFeatured,
+		IsFeatured:     boolValue(input.IsFeatured, false),
 		AuthorID:       uuidToPg(authorID),
 		PublishedAt:    pgtype.Timestamptz{},
 	})
@@ -102,6 +104,44 @@ func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (
 		return nil, fmt.Errorf("cms: create article: %w", err)
 	}
 	mapped, err := mapArticle(article)
+	if err != nil {
+		return nil, err
+	}
+	return &ArticleResult{Data: mapped}, nil
+}
+
+func (s *Service) UpdateArticle(ctx context.Context, input CreateArticleInput) (*ArticleResult, error) {
+	articleID, err := uuid.Parse(strings.TrimSpace(input.ID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid article id: %w", err)
+	}
+	existingArticle, err := s.repo.GetArticleByID(ctx, uuidToPg(articleID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get article: %w", err)
+	}
+	title := chooseString(input.Title, existingArticle.Title)
+	content := chooseString(input.Content, existingArticle.Content)
+	articleType := chooseString(input.Type, existingArticle.Type)
+	if strings.TrimSpace(title) == "" || strings.TrimSpace(content) == "" || strings.TrimSpace(articleType) == "" {
+		return nil, fmt.Errorf("cms: title, content and type are required")
+	}
+	updatedArticle, err := s.repo.UpdateArticle(ctx, queries.UpdateArticleParams{
+		ID:             uuidToPg(articleID),
+		Title:          title,
+		Excerpt:        chooseText(input.Excerpt, existingArticle.Excerpt),
+		Content:        content,
+		CoverImageUrl:  chooseText(input.CoverImageURL, existingArticle.CoverImageUrl),
+		Type:           articleType,
+		SourceName:     chooseText(input.SourceName, existingArticle.SourceName),
+		SourceUrl:      chooseText(input.SourceURL, existingArticle.SourceUrl),
+		SeoTitle:       chooseText(input.SEOTitle, existingArticle.SeoTitle),
+		SeoDescription: chooseText(input.SEODescription, existingArticle.SeoDescription),
+		IsFeatured:     boolValue(input.IsFeatured, existingArticle.IsFeatured),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: update article: %w", err)
+	}
+	mapped, err := mapArticle(updatedArticle)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +190,54 @@ func (s *Service) CreateOpportunity(ctx context.Context, input CreateOpportunity
 	return &OpportunityResult{Data: mapped}, nil
 }
 
+func (s *Service) UpdateOpportunity(ctx context.Context, input CreateOpportunityInput) (*OpportunityResult, error) {
+	opportunityID, err := uuid.Parse(strings.TrimSpace(input.ID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: invalid opportunity id: %w", err)
+	}
+	existingOpportunity, err := s.repo.GetOpportunityByID(ctx, uuidToPg(opportunityID))
+	if err != nil {
+		return nil, fmt.Errorf("cms: get opportunity: %w", err)
+	}
+	title := chooseString(input.Title, existingOpportunity.Title)
+	opportunityType := chooseString(input.Type, existingOpportunity.Type)
+	entityName := chooseString(input.EntityName, existingOpportunity.EntityName)
+	description := chooseString(input.Description, existingOpportunity.Description)
+	country := chooseString(input.Country, existingOpportunity.Country)
+	if title == "" || opportunityType == "" || entityName == "" || description == "" || country == "" {
+		return nil, fmt.Errorf("cms: required fields are missing")
+	}
+	deadline := existingOpportunity.Deadline
+	if strings.TrimSpace(input.Deadline) != "" {
+		parsedTime, err := time.Parse(time.RFC3339, strings.TrimSpace(input.Deadline))
+		if err != nil {
+			return nil, fmt.Errorf("cms: invalid deadline: %w", err)
+		}
+		deadline = pgtype.Timestamptz{Time: parsedTime, Valid: true}
+	}
+	updatedOpportunity, err := s.repo.UpdateOpportunity(ctx, queries.UpdateOpportunityParams{
+		ID:           uuidToPg(opportunityID),
+		Title:        title,
+		Type:         opportunityType,
+		EntityName:   entityName,
+		Description:  description,
+		Requirements: chooseText(input.Requirements, existingOpportunity.Requirements),
+		Deadline:     deadline,
+		ApplyUrl:     chooseText(input.ApplyURL, existingOpportunity.ApplyUrl),
+		Country:      country,
+		Language:     chooseText(input.Language, existingOpportunity.Language),
+		Area:         chooseText(input.Area, existingOpportunity.Area),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cms: update opportunity: %w", err)
+	}
+	mapped, err := mapOpportunity(updatedOpportunity)
+	if err != nil {
+		return nil, err
+	}
+	return &OpportunityResult{Data: mapped}, nil
+}
+
 func mapArticle(article queries.Article) (ArticleItem, error) {
 	id, err := uuidFromPg(article.ID)
 	if err != nil {
@@ -182,6 +270,27 @@ func slugify(value string) string {
 		return uuid.NewString()
 	}
 	return value
+}
+
+func chooseString(input string, fallback string) string {
+	if strings.TrimSpace(input) == "" {
+		return fallback
+	}
+	return strings.TrimSpace(input)
+}
+
+func chooseText(input string, fallback pgtype.Text) pgtype.Text {
+	if strings.TrimSpace(input) == "" {
+		return fallback
+	}
+	return textToPg(input)
+}
+
+func boolValue(input *bool, fallback bool) bool {
+	if input == nil {
+		return fallback
+	}
+	return *input
 }
 
 func uuidToPg(value uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte(value), Valid: true} }

@@ -273,3 +273,73 @@ func (q *Queries) PublishArticle(ctx context.Context, id pgtype.UUID) (Article, 
 	)
 	return i, err
 }
+
+const updateArticle = `-- name: UpdateArticle :one
+UPDATE articles
+SET
+  title = $2,
+  excerpt = $3,
+  content = $4,
+  cover_image_url = $5,
+  type = $6,
+  source_name = $7,
+  source_url = $8,
+  seo_title = $9,
+  seo_description = $10,
+  is_featured = $11
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at, created_at, updated_at, deleted_at
+`
+
+type UpdateArticleParams struct {
+	ID             pgtype.UUID `json:"id"`
+	Title          string      `json:"title"`
+	Excerpt        pgtype.Text `json:"excerpt"`
+	Content        string      `json:"content"`
+	CoverImageUrl  pgtype.Text `json:"cover_image_url"`
+	Type           string      `json:"type"`
+	SourceName     pgtype.Text `json:"source_name"`
+	SourceUrl      pgtype.Text `json:"source_url"`
+	SeoTitle       pgtype.Text `json:"seo_title"`
+	SeoDescription pgtype.Text `json:"seo_description"`
+	IsFeatured     bool        `json:"is_featured"`
+}
+
+func (q *Queries) UpdateArticle(ctx context.Context, arg UpdateArticleParams) (Article, error) {
+	row := q.db.QueryRow(ctx, updateArticle,
+		arg.ID,
+		arg.Title,
+		arg.Excerpt,
+		arg.Content,
+		arg.CoverImageUrl,
+		arg.Type,
+		arg.SourceName,
+		arg.SourceUrl,
+		arg.SeoTitle,
+		arg.SeoDescription,
+		arg.IsFeatured,
+	)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImageUrl,
+		&i.Type,
+		&i.Status,
+		&i.SourceName,
+		&i.SourceUrl,
+		&i.SeoTitle,
+		&i.SeoDescription,
+		&i.IsFeatured,
+		&i.AuthorID,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}

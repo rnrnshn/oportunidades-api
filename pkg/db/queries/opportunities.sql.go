@@ -235,6 +235,76 @@ func (q *Queries) ListOpportunities(ctx context.Context, arg ListOpportunitiesPa
 	return items, nil
 }
 
+const updateOpportunity = `-- name: UpdateOpportunity :one
+UPDATE opportunities
+SET
+  title = $2,
+  type = $3,
+  entity_name = $4,
+  description = $5,
+  requirements = $6,
+  deadline = $7,
+  apply_url = $8,
+  country = $9,
+  language = $10,
+  area = $11
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+`
+
+type UpdateOpportunityParams struct {
+	ID           pgtype.UUID        `json:"id"`
+	Title        string             `json:"title"`
+	Type         string             `json:"type"`
+	EntityName   string             `json:"entity_name"`
+	Description  string             `json:"description"`
+	Requirements pgtype.Text        `json:"requirements"`
+	Deadline     pgtype.Timestamptz `json:"deadline"`
+	ApplyUrl     pgtype.Text        `json:"apply_url"`
+	Country      string             `json:"country"`
+	Language     pgtype.Text        `json:"language"`
+	Area         pgtype.Text        `json:"area"`
+}
+
+func (q *Queries) UpdateOpportunity(ctx context.Context, arg UpdateOpportunityParams) (Opportunity, error) {
+	row := q.db.QueryRow(ctx, updateOpportunity,
+		arg.ID,
+		arg.Title,
+		arg.Type,
+		arg.EntityName,
+		arg.Description,
+		arg.Requirements,
+		arg.Deadline,
+		arg.ApplyUrl,
+		arg.Country,
+		arg.Language,
+		arg.Area,
+	)
+	var i Opportunity
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Type,
+		&i.EntityName,
+		&i.Description,
+		&i.Requirements,
+		&i.Deadline,
+		&i.ApplyUrl,
+		&i.Country,
+		&i.Language,
+		&i.Area,
+		&i.IsActive,
+		&i.PublishedBy,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const verifyOpportunity = `-- name: VerifyOpportunity :one
 UPDATE opportunities
 SET

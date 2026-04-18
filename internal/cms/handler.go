@@ -22,7 +22,7 @@ type createArticleRequest struct {
 	SourceURL      string `json:"source_url"`
 	SEOTitle       string `json:"seo_title"`
 	SEODescription string `json:"seo_description"`
-	IsFeatured     bool   `json:"is_featured"`
+	IsFeatured     *bool  `json:"is_featured"`
 }
 
 type createOpportunityRequest struct {
@@ -37,6 +37,9 @@ type createOpportunityRequest struct {
 	Language     string `json:"language"`
 	Area         string `json:"area"`
 }
+
+type updateArticleRequest = createArticleRequest
+type updateOpportunityRequest = createOpportunityRequest
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
@@ -94,6 +97,67 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 		return handleError(err)
 	}
 	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+func (h *Handler) UpdateArticle(c *fiber.Ctx) error {
+	var request updateArticleRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.UpdateArticle(c.UserContext(), CreateArticleInput{
+		ID:             strings.TrimSpace(c.Params("id")),
+		Title:          strings.TrimSpace(request.Title),
+		Excerpt:        strings.TrimSpace(request.Excerpt),
+		Content:        strings.TrimSpace(request.Content),
+		CoverImageURL:  strings.TrimSpace(request.CoverImageURL),
+		Type:           strings.TrimSpace(request.Type),
+		SourceName:     strings.TrimSpace(request.SourceName),
+		SourceURL:      strings.TrimSpace(request.SourceURL),
+		SEOTitle:       strings.TrimSpace(request.SEOTitle),
+		SEODescription: strings.TrimSpace(request.SEODescription),
+		IsFeatured:     request.IsFeatured,
+	})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) UpdateOpportunity(c *fiber.Ctx) error {
+	var request updateOpportunityRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	validationErrors.RFC3339("deadline", request.Deadline, "deadline deve estar em formato RFC3339.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
+	}
+	result, err := h.service.UpdateOpportunity(c.UserContext(), CreateOpportunityInput{
+		ID:           strings.TrimSpace(c.Params("id")),
+		Title:        strings.TrimSpace(request.Title),
+		Type:         strings.TrimSpace(request.Type),
+		EntityName:   strings.TrimSpace(request.EntityName),
+		Description:  strings.TrimSpace(request.Description),
+		Requirements: strings.TrimSpace(request.Requirements),
+		Deadline:     strings.TrimSpace(request.Deadline),
+		ApplyURL:     strings.TrimSpace(request.ApplyURL),
+		Country:      strings.TrimSpace(request.Country),
+		Language:     strings.TrimSpace(request.Language),
+		Area:         strings.TrimSpace(request.Area),
+	})
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
 }
 
 func handleError(err error) error {

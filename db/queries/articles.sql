@@ -54,6 +54,23 @@ WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
 
+-- name: UpdateArticle :one
+UPDATE articles
+SET
+  title = $2,
+  excerpt = $3,
+  content = $4,
+  cover_image_url = $5,
+  type = $6,
+  source_name = $7,
+  source_url = $8,
+  seo_title = $9,
+  seo_description = $10,
+  is_featured = $11
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: ListArticles :many
 SELECT *
 FROM articles
