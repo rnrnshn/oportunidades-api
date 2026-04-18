@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	CountArticles(ctx context.Context) (int64, error)
 	CountCourses(ctx context.Context) (int64, error)
 	CountMentors(ctx context.Context) (int64, error)
 	CountOpportunities(ctx context.Context) (int64, error)
@@ -18,6 +19,7 @@ type Querier interface {
 	CreateMentorshipSession(ctx context.Context, arg CreateMentorshipSessionParams) (MentorshipSession, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetArticleBySlug(ctx context.Context, slug string) (Article, error)
 	GetCourseBySlug(ctx context.Context, slug string) (Course, error)
 	GetMentorByID(ctx context.Context, userID pgtype.UUID) (GetMentorByIDRow, error)
 	GetOpportunityBySlug(ctx context.Context, slug string) (Opportunity, error)
@@ -25,6 +27,7 @@ type Querier interface {
 	GetUniversityBySlug(ctx context.Context, slug string) (University, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	ListArticles(ctx context.Context, arg ListArticlesParams) ([]Article, error)
 	ListCourses(ctx context.Context, arg ListCoursesParams) ([]Course, error)
 	ListMentors(ctx context.Context, arg ListMentorsParams) ([]ListMentorsRow, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)

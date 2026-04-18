@@ -117,6 +117,35 @@ CREATE INDEX opportunities_is_active_idx ON opportunities (is_active) WHERE dele
 CREATE INDEX opportunities_verified_idx ON opportunities (verified) WHERE deleted_at IS NULL;
 CREATE INDEX opportunities_deleted_at_idx ON opportunities (deleted_at);
 
+CREATE TABLE articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL,
+  cover_image_url TEXT,
+  type TEXT NOT NULL CHECK (type IN ('editorial', 'news', 'guide')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'published', 'archived')),
+  source_name TEXT,
+  source_url TEXT,
+  seo_title TEXT,
+  seo_description TEXT,
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  author_id UUID NOT NULL REFERENCES users(id),
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT articles_slug_unique UNIQUE (slug)
+);
+
+CREATE INDEX articles_type_idx ON articles (type) WHERE deleted_at IS NULL;
+CREATE INDEX articles_status_idx ON articles (status) WHERE deleted_at IS NULL;
+CREATE INDEX articles_is_featured_idx ON articles (is_featured) WHERE deleted_at IS NULL;
+CREATE INDEX articles_published_at_idx ON articles (published_at) WHERE deleted_at IS NULL;
+CREATE INDEX articles_author_id_idx ON articles (author_id) WHERE deleted_at IS NULL;
+CREATE INDEX articles_deleted_at_idx ON articles (deleted_at);
+
 CREATE TABLE mentor_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id),
@@ -192,6 +221,11 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER opportunities_set_updated_at
 BEFORE UPDATE ON opportunities
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER articles_set_updated_at
+BEFORE UPDATE ON articles
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 

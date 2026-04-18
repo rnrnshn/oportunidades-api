@@ -80,3 +80,25 @@ SET
   published_by = EXCLUDED.published_by,
   verified = EXCLUDED.verified,
   deleted_at = NULL;
+
+INSERT INTO articles (id, slug, title, excerpt, content, cover_image_url, type, status, source_name, source_url, seo_title, seo_description, is_featured, author_id, published_at)
+VALUES
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'como-preparar-candidatura-a-bolsa', 'Como Preparar uma Candidatura a Bolsa', 'Guia pratico para estudantes que querem submeter candidaturas mais fortes.', 'Este guia resume como organizar documentos, escrever motivacao e rever requisitos antes do prazo final.', NULL, 'guide', 'published', 'Oportunidades', 'https://oportunidades.co.mz/guias/candidatura-bolsa', 'Como preparar candidatura a bolsa', 'Guia pratico para melhorar a sua candidatura a bolsas.', TRUE, '11111111-1111-1111-1111-111111111111', NOW() - INTERVAL '2 days'),
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'novas-bolsas-lancadas-para-2026', 'Novas Bolsas Lancadas para 2026', 'Resumo das novas oportunidades de bolsa abertas este mes.', 'Compilamos as principais bolsas anunciadas para 2026 com foco em tecnologia, saude e gestao.', NULL, 'news', 'published', 'Oportunidades', 'https://oportunidades.co.mz/noticias/bolsas-2026', 'Novas bolsas lancadas para 2026', 'Resumo das bolsas recentemente anunciadas para 2026.', FALSE, '11111111-1111-1111-1111-111111111111', NOW() - INTERVAL '1 day'),
+  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'porque-mentoria-importa-na-carreira', 'Porque a Mentoria Importa na Carreira', 'Uma reflexao editorial sobre o valor da mentoria para jovens profissionais.', 'Mentoria acelera aprendizagem, expande contexto e ajuda jovens profissionais a evitar erros comuns no inicio da carreira.', NULL, 'editorial', 'published', 'Oportunidades', 'https://oportunidades.co.mz/editorial/mentoria-carreira', 'Porque a mentoria importa na carreira', 'Editorial sobre o impacto da mentoria no crescimento profissional.', TRUE, '11111111-1111-1111-1111-111111111111', NOW() - INTERVAL '3 days')
+ON CONFLICT (slug) DO UPDATE
+SET
+  title = EXCLUDED.title,
+  excerpt = EXCLUDED.excerpt,
+  content = EXCLUDED.content,
+  cover_image_url = EXCLUDED.cover_image_url,
+  type = EXCLUDED.type,
+  status = EXCLUDED.status,
+  source_name = EXCLUDED.source_name,
+  source_url = EXCLUDED.source_url,
+  seo_title = EXCLUDED.seo_title,
+  seo_description = EXCLUDED.seo_description,
+  is_featured = EXCLUDED.is_featured,
+  author_id = EXCLUDED.author_id,
+  published_at = EXCLUDED.published_at,
+  deleted_at = NULL;

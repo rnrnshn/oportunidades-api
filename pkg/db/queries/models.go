@@ -8,6 +8,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Article struct {
+	ID             pgtype.UUID        `json:"id"`
+	Slug           string             `json:"slug"`
+	Title          string             `json:"title"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImageUrl  pgtype.Text        `json:"cover_image_url"`
+	Type           string             `json:"type"`
+	Status         string             `json:"status"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SeoTitle       pgtype.Text        `json:"seo_title"`
+	SeoDescription pgtype.Text        `json:"seo_description"`
+	IsFeatured     bool               `json:"is_featured"`
+	AuthorID       pgtype.UUID        `json:"author_id"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Course struct {
 	ID                pgtype.UUID        `json:"id"`
 	Slug              string             `json:"slug"`
