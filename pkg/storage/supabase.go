@@ -82,7 +82,7 @@ func (c *SupabaseClient) CreateSignedUpload(ctx context.Context, objectPath stri
 	}
 	uploadURL := rawSignedURL
 	if strings.HasPrefix(rawSignedURL, "/") {
-		uploadURL = c.baseURL + rawSignedURL
+		uploadURL = c.baseURL + "/storage/v1" + rawSignedURL
 	}
 	path := firstNonEmpty(payload.Path, payload.Key, objectPath)
 	return &SignedUpload{Path: strings.TrimLeft(path, "/"), UploadURL: uploadURL, Token: payload.Token, PublicURL: c.PublicURL(path)}, nil
