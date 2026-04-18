@@ -82,6 +82,7 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 	validationErrors.Required("entity_name", request.EntityName, "Entidade é obrigatória.")
 	validationErrors.Required("description", request.Description, "Descrição é obrigatória.")
 	validationErrors.Required("country", request.Country, "País é obrigatório.")
+	validationErrors.RFC3339("deadline", request.Deadline, "deadline deve estar em formato RFC3339.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}

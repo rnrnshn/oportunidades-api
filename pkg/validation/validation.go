@@ -1,6 +1,11 @@
 package validation
 
-import "strings"
+import (
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type FieldError struct {
 	Field   string `json:"field"`
@@ -28,6 +33,28 @@ func (e *Errors) MinLength(field string, value string, min int, message string) 
 		return
 	}
 	e.items = append(e.items, FieldError{Field: field, Reason: "min_length", Message: message})
+}
+
+func (e *Errors) UUID(field string, value string, message string) {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return
+	}
+	if _, err := uuid.Parse(trimmedValue); err == nil {
+		return
+	}
+	e.items = append(e.items, FieldError{Field: field, Reason: "invalid_uuid", Message: message})
+}
+
+func (e *Errors) RFC3339(field string, value string, message string) {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return
+	}
+	if _, err := time.Parse(time.RFC3339, trimmedValue); err == nil {
+		return
+	}
+	e.items = append(e.items, FieldError{Field: field, Reason: "invalid_datetime", Message: message})
 }
 
 func (e *Errors) HasAny() bool {

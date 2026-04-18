@@ -51,6 +51,24 @@ func TestHandlerCreateSessionRequestRequiresAuth(t *testing.T) {
 	}
 }
 
+func TestHandlerCreateSessionRequestValidatesFields(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/mentorship/sessions", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: uuid.NewString(), Role: "user"})
+		return handler.CreateSessionRequest(c)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/mentorship/sessions", strings.NewReader(`{"mentor_id":"bad-id","message":"","scheduled_at":"bad-date"}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
 func TestHandlerCreateSessionRequest(t *testing.T) {
 	mentorID := uuid.New()
 	requesterID := uuid.New()

@@ -9,6 +9,7 @@ import (
 
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
+	"github.com/rnrnshn/oportunidades-api/pkg/validation"
 )
 
 type Handler struct {
@@ -54,8 +55,13 @@ func (h *Handler) CreateSessionRequest(c *fiber.Ctx) error {
 	if err := c.BodyParser(&request); err != nil {
 		return apierror.Validation("Payload inválido.", nil)
 	}
-	if strings.TrimSpace(request.MentorID) == "" || strings.TrimSpace(request.Message) == "" {
-		return apierror.Validation("mentor_id e message são obrigatórios.", nil)
+	validationErrors := validation.New()
+	validationErrors.Required("mentor_id", request.MentorID, "mentor_id é obrigatório.")
+	validationErrors.Required("message", request.Message, "message é obrigatório.")
+	validationErrors.UUID("mentor_id", request.MentorID, "mentor_id deve ser um UUID válido.")
+	validationErrors.RFC3339("scheduled_at", request.ScheduledAt, "scheduled_at deve estar em formato RFC3339.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos para pedir sessão de mentoria.", validationErrors.Details())
 	}
 
 	result, err := h.service.CreateSessionRequest(c.UserContext(), SessionRequestInput{
@@ -87,7 +93,7 @@ func handleError(err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return apierror.NotFound("Mentor não encontrado.")
 	}
-	if strings.Contains(err.Error(), "invalid mentor id") || strings.Contains(err.Error(), "invalid requester id") || strings.Contains(err.Error(), "invalid scheduled_at") || strings.Contains(err.Error(), "requester cannot book own mentor profile") {
+	if strings.Contains(err.Error(), "requester cannot book own mentor profile") {
 		return apierror.Validation("Dados inválidos para pedir sessão de mentoria.", nil)
 	}
 	return err

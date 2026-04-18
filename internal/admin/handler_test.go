@@ -71,3 +71,17 @@ func TestHandlerVerifyOpportunityNotFound(t *testing.T) {
 		t.Fatalf("expected 404, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerPublishArticleValidatesID(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/admin/articles/:id/publish", handler.PublishArticle)
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/articles/bad-id/publish", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
