@@ -32,6 +32,34 @@ func (h *Handler) PublishArticle(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+func (h *Handler) UnpublishArticle(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.UnpublishArticle(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) ArchiveArticle(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.ArchiveArticle(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
 func (h *Handler) VerifyOpportunity(c *fiber.Ctx) error {
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
@@ -40,6 +68,34 @@ func (h *Handler) VerifyOpportunity(c *fiber.Ctx) error {
 		return apierror.Validation("Dados inválidos.", validationErrors.Details())
 	}
 	result, err := h.service.VerifyOpportunity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) RejectOpportunity(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.RejectOpportunity(c.UserContext(), strings.TrimSpace(c.Params("id")))
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) DeactivateOpportunity(c *fiber.Ctx) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.DeactivateOpportunity(c.UserContext(), strings.TrimSpace(c.Params("id")))
 	if err != nil {
 		return handleError(err)
 	}

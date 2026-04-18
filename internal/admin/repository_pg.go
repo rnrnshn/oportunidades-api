@@ -32,6 +32,22 @@ func (r *PostgresRepository) PublishArticle(ctx context.Context, id pgtype.UUID)
 	return item, err
 }
 
+func (r *PostgresRepository) UnpublishArticle(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
+	item, err := r.queries.UnpublishArticle(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Article{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) ArchiveArticle(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
+	item, err := r.queries.ArchiveArticle(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Article{}, ErrNotFound
+	}
+	return item, err
+}
+
 func (r *PostgresRepository) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	item, err := r.queries.GetOpportunityByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -42,6 +58,22 @@ func (r *PostgresRepository) GetOpportunityByID(ctx context.Context, id pgtype.U
 
 func (r *PostgresRepository) VerifyOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	item, err := r.queries.VerifyOpportunity(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Opportunity{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) RejectOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
+	item, err := r.queries.RejectOpportunity(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.Opportunity{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
+	item, err := r.queries.DeactivateOpportunity(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return queries.Opportunity{}, ErrNotFound
 	}

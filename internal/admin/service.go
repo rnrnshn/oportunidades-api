@@ -99,6 +99,44 @@ func (s *Service) PublishArticle(ctx context.Context, articleID string) (*Articl
 	return &ArticleResult{Data: mapped}, nil
 }
 
+func (s *Service) UnpublishArticle(ctx context.Context, articleID string) (*ArticleResult, error) {
+	id, err := parseID(articleID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	if _, err := s.repo.GetArticleByID(ctx, id); err != nil {
+		return nil, err
+	}
+	item, err := s.repo.UnpublishArticle(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapArticle(item)
+	if err != nil {
+		return nil, err
+	}
+	return &ArticleResult{Data: mapped}, nil
+}
+
+func (s *Service) ArchiveArticle(ctx context.Context, articleID string) (*ArticleResult, error) {
+	id, err := parseID(articleID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	if _, err := s.repo.GetArticleByID(ctx, id); err != nil {
+		return nil, err
+	}
+	item, err := s.repo.ArchiveArticle(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapArticle(item)
+	if err != nil {
+		return nil, err
+	}
+	return &ArticleResult{Data: mapped}, nil
+}
+
 func (s *Service) VerifyOpportunity(ctx context.Context, opportunityID string) (*OpportunityResult, error) {
 	id, err := parseID(opportunityID)
 	if err != nil {
@@ -108,6 +146,44 @@ func (s *Service) VerifyOpportunity(ctx context.Context, opportunityID string) (
 		return nil, err
 	}
 	item, err := s.repo.VerifyOpportunity(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapOpportunity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &OpportunityResult{Data: mapped}, nil
+}
+
+func (s *Service) RejectOpportunity(ctx context.Context, opportunityID string) (*OpportunityResult, error) {
+	id, err := parseID(opportunityID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	if _, err := s.repo.GetOpportunityByID(ctx, id); err != nil {
+		return nil, err
+	}
+	item, err := s.repo.RejectOpportunity(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapOpportunity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &OpportunityResult{Data: mapped}, nil
+}
+
+func (s *Service) DeactivateOpportunity(ctx context.Context, opportunityID string) (*OpportunityResult, error) {
+	id, err := parseID(opportunityID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	if _, err := s.repo.GetOpportunityByID(ctx, id); err != nil {
+		return nil, err
+	}
+	item, err := s.repo.DeactivateOpportunity(ctx, id)
 	if err != nil {
 		return nil, err
 	}

@@ -178,7 +178,11 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 
 	adminGroup := v1.Group("/admin", appauth.RequireRole(authService, "admin"))
 	adminGroup.Post("/articles/:id/publish", adminHandler.PublishArticle)
+	adminGroup.Post("/articles/:id/unpublish", adminHandler.UnpublishArticle)
+	adminGroup.Post("/articles/:id/archive", adminHandler.ArchiveArticle)
 	adminGroup.Post("/opportunities/:id/verify", adminHandler.VerifyOpportunity)
+	adminGroup.Post("/opportunities/:id/reject", adminHandler.RejectOpportunity)
+	adminGroup.Post("/opportunities/:id/deactivate", adminHandler.DeactivateOpportunity)
 	adminGroup.Get("/reports", adminHandler.ListReports)
 	adminGroup.Patch("/reports/:id", adminHandler.UpdateReportStatus)
 
