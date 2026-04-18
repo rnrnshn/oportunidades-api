@@ -17,4 +17,5 @@ type Repository interface {
 	CreateRefreshToken(ctx context.Context, params queries.CreateRefreshTokenParams) (queries.RefreshToken, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (queries.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 }

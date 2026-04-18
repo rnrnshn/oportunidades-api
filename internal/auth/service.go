@@ -174,6 +174,17 @@ func (s *Service) Logout(ctx context.Context, rawRefreshToken string) error {
 	return nil
 }
 
+func (s *Service) LogoutAll(ctx context.Context, userID string) error {
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("auth: invalid user id for logout all: %w", err)
+	}
+	if err := s.repo.RevokeAllRefreshTokensByUser(ctx, pgtype.UUID{Bytes: [16]byte(parsedUserID), Valid: true}); err != nil {
+		return fmt.Errorf("auth: revoke all refresh tokens: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) ParseAccessToken(rawToken string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(rawToken, &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

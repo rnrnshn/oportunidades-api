@@ -66,3 +66,7 @@ func (r *PostgresRepository) GetRefreshTokenByHash(ctx context.Context, tokenHas
 func (r *PostgresRepository) RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error {
 	return r.queries.RevokeRefreshToken(ctx, id)
 }
+
+func (r *PostgresRepository) RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error {
+	return r.queries.RevokeAllRefreshTokensByUser(ctx, userID)
+}

@@ -149,6 +149,7 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	accountGroup.Get("/me", accountHandler.GetMe)
 	accountGroup.Patch("/me", accountHandler.UpdateMe)
 	accountGroup.Post("/password", accountHandler.ChangePassword)
+	accountGroup.Post("/logout-all", authHandler.LogoutAll)
 
 	cmsGroup := v1.Group("/cms", appauth.RequireRole(authService, "cms_partner", "admin"))
 	cmsGroup.Post("/articles", cmsHandler.CreateArticle)

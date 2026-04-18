@@ -13,12 +13,13 @@ import (
 )
 
 type mockRepository struct {
-	createUserFn         func(context.Context, queries.CreateUserParams) (queries.User, error)
-	getUserByEmailFn     func(context.Context, string) (queries.User, error)
-	getUserByIDFn        func(context.Context, pgtype.UUID) (queries.User, error)
-	createRefreshTokenFn func(context.Context, queries.CreateRefreshTokenParams) (queries.RefreshToken, error)
-	getRefreshTokenFn    func(context.Context, string) (queries.RefreshToken, error)
-	revokeRefreshTokenFn func(context.Context, pgtype.UUID) error
+	createUserFn                   func(context.Context, queries.CreateUserParams) (queries.User, error)
+	getUserByEmailFn               func(context.Context, string) (queries.User, error)
+	getUserByIDFn                  func(context.Context, pgtype.UUID) (queries.User, error)
+	createRefreshTokenFn           func(context.Context, queries.CreateRefreshTokenParams) (queries.RefreshToken, error)
+	getRefreshTokenFn              func(context.Context, string) (queries.RefreshToken, error)
+	revokeRefreshTokenFn           func(context.Context, pgtype.UUID) error
+	revokeAllRefreshTokensByUserFn func(context.Context, pgtype.UUID) error
 }
 
 func (m *mockRepository) CreateUser(ctx context.Context, params queries.CreateUserParams) (queries.User, error) {
@@ -43,6 +44,10 @@ func (m *mockRepository) GetRefreshTokenByHash(ctx context.Context, tokenHash st
 
 func (m *mockRepository) RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error {
 	return m.revokeRefreshTokenFn(ctx, id)
+}
+
+func (m *mockRepository) RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error {
+	return m.revokeAllRefreshTokensByUserFn(ctx, userID)
 }
 
 func TestServiceLogin(t *testing.T) {
@@ -127,6 +132,7 @@ func TestServiceRefresh(t *testing.T) {
 	userID := uuid.New()
 	refreshID := uuid.New()
 	rawRefreshToken := "refresh-token"
+	revoked := false
 
 	repo := &mockRepository{
 		getRefreshTokenFn: func(context.Context, string) (queries.RefreshToken, error) {
@@ -145,6 +151,7 @@ func TestServiceRefresh(t *testing.T) {
 			}, nil
 		},
 		revokeRefreshTokenFn: func(context.Context, pgtype.UUID) error {
+			revoked = true
 			return nil
 		},
 		createRefreshTokenFn: func(context.Context, queries.CreateRefreshTokenParams) (queries.RefreshToken, error) {
@@ -166,6 +173,44 @@ func TestServiceRefresh(t *testing.T) {
 
 	if result.RefreshToken == rawRefreshToken {
 		t.Fatal("expected rotated refresh token")
+	}
+	if !revoked {
+		t.Fatal("expected previous refresh token to be revoked")
+	}
+}
+
+func TestServiceRefreshRejectsExpiredToken(t *testing.T) {
+	userID := uuid.New()
+	repo := &mockRepository{
+		getRefreshTokenFn: func(context.Context, string) (queries.RefreshToken, error) {
+			return queries.RefreshToken{UserID: uuidToPg(userID), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Minute), Valid: true}}, nil
+		},
+	}
+	service := NewService(repo, Config{JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, RefreshCookieName: "refresh_token"})
+	_, err := service.Refresh(context.Background(), "expired-token")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected invalid credentials for expired token, got %v", err)
+	}
+}
+
+func TestServiceLogoutAll(t *testing.T) {
+	userID := uuid.New()
+	called := false
+	repo := &mockRepository{
+		revokeAllRefreshTokensByUserFn: func(_ context.Context, id pgtype.UUID) error {
+			called = true
+			if id != uuidToPg(userID) {
+				t.Fatalf("unexpected user id: %+v", id)
+			}
+			return nil
+		},
+	}
+	service := NewService(repo, Config{JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, RefreshCookieName: "refresh_token"})
+	if err := service.LogoutAll(context.Background(), userID.String()); err != nil {
+		t.Fatalf("logout all returned error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected revoke all refresh tokens call")
 	}
 }
 

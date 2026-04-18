@@ -111,6 +111,22 @@ func (h *Handler) Logout(c *fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) LogoutAll(c *fiber.Ctx) error {
+	currentUser, ok := CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	if err := h.service.LogoutAll(c.UserContext(), currentUser.ID); err != nil {
+		return handleServiceError(err)
+	}
+	h.clearRefreshCookie(c)
+	return c.JSON(fiber.Map{
+		"data": fiber.Map{
+			"message": "Todas as sessões foram terminadas com sucesso.",
+		},
+	})
+}
+
 func (h *Handler) setRefreshCookie(c *fiber.Ctx, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     h.service.RefreshCookieName(),
