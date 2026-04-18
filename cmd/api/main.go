@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
+	appaccount "github.com/rnrnshn/oportunidades-api/internal/account"
 	apparticles "github.com/rnrnshn/oportunidades-api/internal/articles"
 	appauth "github.com/rnrnshn/oportunidades-api/internal/auth"
 	appcatalog "github.com/rnrnshn/oportunidades-api/internal/catalog"
@@ -109,6 +110,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 		RefreshCookieSecure: strings.EqualFold(getEnv("ENV", "development"), "production"),
 	})
 	authHandler := appauth.NewHandler(authService)
+	accountRepository := appaccount.NewPostgresRepository(pool)
+	accountService := appaccount.NewService(accountRepository)
+	accountHandler := appaccount.NewHandler(accountService)
 	articlesRepository := apparticles.NewPostgresRepository(pool)
 	articlesService := apparticles.NewService(articlesRepository)
 	articlesHandler := apparticles.NewHandler(articlesService)
@@ -128,6 +132,10 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
 	authGroup.Post("/logout", authHandler.Logout)
+
+	accountGroup := v1.Group("/account", appauth.RequireAuth(authService))
+	accountGroup.Get("/me", accountHandler.GetMe)
+	accountGroup.Patch("/me", accountHandler.UpdateMe)
 
 	articlesGroup := v1.Group("/articles")
 	articlesGroup.Get("", articlesHandler.ListArticles)

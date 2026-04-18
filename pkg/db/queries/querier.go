@@ -33,6 +33,7 @@ type Querier interface {
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
