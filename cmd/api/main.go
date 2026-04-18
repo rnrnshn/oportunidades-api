@@ -106,11 +106,13 @@ func getEnv(key string, fallback string) string {
 func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	authRepository := appauth.NewPostgresRepository(pool)
 	authService := appauth.NewService(authRepository, appauth.Config{
-		JWTSecret:           getEnv("JWT_SECRET", "change-me"),
-		JWTExpiry:           time.Duration(getEnvAsInt("JWT_EXPIRY_MINUTES", 15)) * time.Minute,
-		RefreshTokenExpiry:  time.Duration(getEnvAsInt("REFRESH_TOKEN_EXPIRY_DAYS", 30)) * 24 * time.Hour,
-		RefreshCookieName:   "refresh_token",
-		RefreshCookieSecure: strings.EqualFold(getEnv("ENV", "development"), "production"),
+		JWTSecret:             getEnv("JWT_SECRET", "change-me"),
+		JWTExpiry:             time.Duration(getEnvAsInt("JWT_EXPIRY_MINUTES", 15)) * time.Minute,
+		RefreshTokenExpiry:    time.Duration(getEnvAsInt("REFRESH_TOKEN_EXPIRY_DAYS", 30)) * 24 * time.Hour,
+		AuthActionTokenExpiry: time.Duration(getEnvAsInt("AUTH_ACTION_TOKEN_EXPIRY_HOURS", 24)) * time.Hour,
+		RefreshCookieName:     "refresh_token",
+		RefreshCookieSecure:   strings.EqualFold(getEnv("ENV", "development"), "production"),
+		ExposeDebugTokens:     !strings.EqualFold(getEnv("ENV", "development"), "production"),
 	})
 	authHandler := appauth.NewHandler(authService)
 	accountRepository := appaccount.NewPostgresRepository(pool)
@@ -144,12 +146,17 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
 	authGroup.Post("/logout", authHandler.Logout)
+	authGroup.Post("/forgot-password", authHandler.ForgotPassword)
+	authGroup.Post("/reset-password", authHandler.ResetPassword)
+	authGroup.Post("/verify-email", authHandler.VerifyEmail)
+	authGroup.Post("/send-verification", appauth.RequireAuth(authService), authHandler.SendVerification)
 
 	accountGroup := v1.Group("/account", appauth.RequireAuth(authService))
 	accountGroup.Get("/me", accountHandler.GetMe)
 	accountGroup.Patch("/me", accountHandler.UpdateMe)
 	accountGroup.Post("/password", accountHandler.ChangePassword)
 	accountGroup.Post("/logout-all", authHandler.LogoutAll)
+	accountGroup.Post("/deactivate", authHandler.DeactivateAccount)
 
 	cmsGroup := v1.Group("/cms", appauth.RequireRole(authService, "cms_partner", "admin"))
 	cmsGroup.Post("/articles", cmsHandler.CreateArticle)

@@ -29,6 +29,18 @@ type Article struct {
 	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type AuthActionToken struct {
+	ID         pgtype.UUID        `json:"id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	Purpose    string             `json:"purpose"`
+	TokenHash  string             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Course struct {
 	ID                pgtype.UUID        `json:"id"`
 	Slug              string             `json:"slug"`
@@ -135,13 +147,14 @@ type University struct {
 }
 
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Role         string             `json:"role"`
-	Name         string             `json:"name"`
-	AvatarUrl    pgtype.Text        `json:"avatar_url"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	ID              pgtype.UUID        `json:"id"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	Role            string             `json:"role"`
+	Name            string             `json:"name"`
+	AvatarUrl       pgtype.Text        `json:"avatar_url"`
+	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }

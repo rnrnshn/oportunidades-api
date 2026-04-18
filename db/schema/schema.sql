@@ -13,6 +13,7 @@ CREATE TABLE users (
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'mentor', 'cms_partner', 'admin')),
   name TEXT NOT NULL,
   avatar_url TEXT,
+  email_verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ,
@@ -37,6 +38,24 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id) WHERE deleted_at IS NULL;
 CREATE INDEX refresh_tokens_expires_at_idx ON refresh_tokens (expires_at) WHERE deleted_at IS NULL;
 CREATE INDEX refresh_tokens_deleted_at_idx ON refresh_tokens (deleted_at);
+
+CREATE TABLE auth_action_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  purpose TEXT NOT NULL CHECK (purpose IN ('password_reset', 'email_verification')),
+  token_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT auth_action_tokens_token_hash_unique UNIQUE (token_hash)
+);
+
+CREATE INDEX auth_action_tokens_user_id_idx ON auth_action_tokens (user_id) WHERE deleted_at IS NULL;
+CREATE INDEX auth_action_tokens_purpose_idx ON auth_action_tokens (purpose) WHERE deleted_at IS NULL;
+CREATE INDEX auth_action_tokens_expires_at_idx ON auth_action_tokens (expires_at) WHERE deleted_at IS NULL;
+CREATE INDEX auth_action_tokens_deleted_at_idx ON auth_action_tokens (deleted_at);
 
 CREATE TABLE universities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -206,6 +225,11 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER refresh_tokens_set_updated_at
 BEFORE UPDATE ON refresh_tokens
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER auth_action_tokens_set_updated_at
+BEFORE UPDATE ON auth_action_tokens
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 

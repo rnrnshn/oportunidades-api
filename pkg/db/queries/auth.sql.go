@@ -11,6 +11,62 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumeAuthActionToken = `-- name: ConsumeAuthActionToken :exec
+UPDATE auth_action_tokens
+SET consumed_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) ConsumeAuthActionToken(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, consumeAuthActionToken, id)
+	return err
+}
+
+const createAuthActionToken = `-- name: CreateAuthActionToken :one
+INSERT INTO auth_action_tokens (
+  user_id,
+  purpose,
+  token_hash,
+  expires_at
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4
+)
+RETURNING id, user_id, purpose, token_hash, expires_at, consumed_at, created_at, updated_at, deleted_at
+`
+
+type CreateAuthActionTokenParams struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	Purpose   string             `json:"purpose"`
+	TokenHash string             `json:"token_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreateAuthActionToken(ctx context.Context, arg CreateAuthActionTokenParams) (AuthActionToken, error) {
+	row := q.db.QueryRow(ctx, createAuthActionToken,
+		arg.UserID,
+		arg.Purpose,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i AuthActionToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (
   user_id,
@@ -60,7 +116,7 @@ INSERT INTO users (
   $4,
   $5
 )
-RETURNING id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
 `
 
 type CreateUserParams struct {
@@ -87,6 +143,64 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Role,
 		&i.Name,
 		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const deactivateUser = `-- name: DeactivateUser :one
+UPDATE users
+SET deleted_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, deactivateUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getAuthActionTokenByHash = `-- name: GetAuthActionTokenByHash :one
+SELECT id, user_id, purpose, token_hash, expires_at, consumed_at, created_at, updated_at, deleted_at
+FROM auth_action_tokens
+WHERE token_hash = $1
+  AND purpose = $2
+  AND deleted_at IS NULL
+  AND consumed_at IS NULL
+`
+
+type GetAuthActionTokenByHashParams struct {
+	TokenHash string `json:"token_hash"`
+	Purpose   string `json:"purpose"`
+}
+
+func (q *Queries) GetAuthActionTokenByHash(ctx context.Context, arg GetAuthActionTokenByHashParams) (AuthActionToken, error) {
+	row := q.db.QueryRow(ctx, getAuthActionTokenByHash, arg.TokenHash, arg.Purpose)
+	var i AuthActionToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Purpose,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -119,7 +233,7 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
 FROM users
 WHERE email = $1
   AND deleted_at IS NULL
@@ -135,6 +249,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Role,
 		&i.Name,
 		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -143,7 +258,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
 FROM users
 WHERE id = $1
   AND deleted_at IS NULL
@@ -159,6 +274,33 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.Role,
 		&i.Name,
 		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :one
+UPDATE users
+SET email_verified_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+`
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, markUserEmailVerified, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -189,4 +331,35 @@ WHERE id = $1
 func (q *Queries) RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, revokeRefreshToken, id)
 	return err
+}
+
+const updateUserPasswordByID = `-- name: UpdateUserPasswordByID :one
+UPDATE users
+SET password_hash = $2
+WHERE id = $1
+  AND deleted_at IS NULL
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+`
+
+type UpdateUserPasswordByIDParams struct {
+	ID           pgtype.UUID `json:"id"`
+	PasswordHash string      `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserPasswordByID, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }

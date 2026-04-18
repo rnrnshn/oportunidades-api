@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ConsumeAuthActionToken(ctx context.Context, id pgtype.UUID) error
 	CountArticles(ctx context.Context) (int64, error)
 	CountCourses(ctx context.Context) (int64, error)
 	CountMentors(ctx context.Context) (int64, error)
@@ -18,13 +19,16 @@ type Querier interface {
 	CountReports(ctx context.Context) (int64, error)
 	CountUniversities(ctx context.Context) (int64, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
+	CreateAuthActionToken(ctx context.Context, arg CreateAuthActionTokenParams) (AuthActionToken, error)
 	CreateMentorshipSession(ctx context.Context, arg CreateMentorshipSessionParams) (MentorshipSession, error)
 	CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error)
 	GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, error)
 	GetArticleBySlug(ctx context.Context, slug string) (Article, error)
+	GetAuthActionTokenByHash(ctx context.Context, arg GetAuthActionTokenByHashParams) (AuthActionToken, error)
 	GetCourseBySlug(ctx context.Context, slug string) (Course, error)
 	GetMentorByID(ctx context.Context, userID pgtype.UUID) (GetMentorByIDRow, error)
 	GetOpportunityByID(ctx context.Context, id pgtype.UUID) (Opportunity, error)
@@ -40,6 +44,7 @@ type Querier interface {
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
+	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
@@ -47,6 +52,7 @@ type Querier interface {
 	UpdateOpportunity(ctx context.Context, arg UpdateOpportunityParams) (Opportunity, error)
 	UpdateReportStatus(ctx context.Context, arg UpdateReportStatusParams) (Report, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
+	UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 }

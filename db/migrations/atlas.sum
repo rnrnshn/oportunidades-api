@@ -1,4 +1,5 @@
-h1:bsqLe+mxgZrlMZUELPGAQLJAB9UqmrTrK2JdgrzVkro=
+h1:YPu/qwbJWe0qjuRnF5NhjWJ9yQMtPRDgcK2JZ51ARms=
 20260417231418_initial_schema.sql h1:OaQTOMQbx0c9E3Wvs50tRjGqAhtIwSv1zIvWyGHLxqg=
 20260417234207_add_mentorship.sql h1:yV5uNYldjM9afgjgLWR+IJF75yosc7ngPoOyXZZ4KD0=
 20260418000227_add_articles.sql h1:8kLNhQ1e2yDJfZXOZSclshMApFItcyN3bo7K2JXhyXk=
+20260418013538_add_auth_recovery_and_verification.sql h1:LM3J7APuhyLtcu+XqkIMENrYaFcUk1Ar1lnDmH7qhFQ=

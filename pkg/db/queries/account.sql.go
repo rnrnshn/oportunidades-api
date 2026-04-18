@@ -17,7 +17,7 @@ SET
   password_hash = $2
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
 `
 
 type UpdateUserPasswordParams struct {
@@ -35,6 +35,7 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 		&i.Role,
 		&i.Name,
 		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -49,7 +50,7 @@ SET
   avatar_url = $3
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, email, password_hash, role, name, avatar_url, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
 `
 
 type UpdateUserProfileParams struct {
@@ -68,6 +69,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Role,
 		&i.Name,
 		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

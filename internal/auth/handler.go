@@ -26,6 +26,20 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+type verifyEmailRequest struct {
+	Token string `json:"token"`
+}
+type deactivateAccountRequest struct {
+	CurrentPassword string `json:"current_password"`
+}
+
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
@@ -127,6 +141,93 @@ func (h *Handler) LogoutAll(c *fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) ForgotPassword(c *fiber.Ctx) error {
+	var request forgotPasswordRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("email", request.Email, "Email é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.ForgotPassword(c.UserContext(), ForgotPasswordInput{Email: strings.TrimSpace(strings.ToLower(request.Email))})
+	if err != nil {
+		return handleServiceError(err)
+	}
+	return c.JSON(actionSuccessResponse(result))
+}
+
+func (h *Handler) ResetPassword(c *fiber.Ctx) error {
+	var request resetPasswordRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("token", request.Token, "Token é obrigatório.")
+	validationErrors.Required("new_password", request.NewPassword, "Nova password é obrigatória.")
+	validationErrors.MinLength("new_password", request.NewPassword, 8, "A nova password deve ter pelo menos 8 caracteres.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.ResetPassword(c.UserContext(), ResetPasswordInput{Token: strings.TrimSpace(request.Token), NewPassword: strings.TrimSpace(request.NewPassword)})
+	if err != nil {
+		return handleServiceError(err)
+	}
+	return c.JSON(actionSuccessResponse(result))
+}
+
+func (h *Handler) SendVerification(c *fiber.Ctx) error {
+	currentUser, ok := CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	result, err := h.service.SendVerification(c.UserContext(), SendVerificationInput{UserID: currentUser.ID})
+	if err != nil {
+		return handleServiceError(err)
+	}
+	return c.JSON(actionSuccessResponse(result))
+}
+
+func (h *Handler) VerifyEmail(c *fiber.Ctx) error {
+	var request verifyEmailRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("token", request.Token, "Token é obrigatório.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.VerifyEmail(c.UserContext(), VerifyEmailInput{Token: strings.TrimSpace(request.Token)})
+	if err != nil {
+		return handleServiceError(err)
+	}
+	return c.JSON(actionSuccessResponse(result))
+}
+
+func (h *Handler) DeactivateAccount(c *fiber.Ctx) error {
+	currentUser, ok := CurrentUser(c)
+	if !ok {
+		return apierror.Unauthorized("Token inválido.")
+	}
+	var request deactivateAccountRequest
+	if err := c.BodyParser(&request); err != nil {
+		return apierror.Validation("Payload inválido.", nil)
+	}
+	validationErrors := validation.New()
+	validationErrors.Required("current_password", request.CurrentPassword, "Password actual é obrigatória.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.DeactivateAccount(c.UserContext(), currentUser.ID, strings.TrimSpace(request.CurrentPassword))
+	if err != nil {
+		return handleServiceError(err)
+	}
+	h.clearRefreshCookie(c)
+	return c.JSON(actionSuccessResponse(result))
+}
+
 func (h *Handler) setRefreshCookie(c *fiber.Ctx, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     h.service.RefreshCookieName(),
@@ -162,6 +263,14 @@ func authSuccessResponse(result *AuthResult) fiber.Map {
 	}
 }
 
+func actionSuccessResponse(result *ActionResult) fiber.Map {
+	data := fiber.Map{"message": result.Message}
+	if result.DebugToken != "" {
+		data["debug_token"] = result.DebugToken
+	}
+	return fiber.Map{"data": data}
+}
+
 func handleServiceError(err error) error {
 	if errors.Is(err, ErrInvalidCredentials) {
 		return apierror.Unauthorized("Credenciais inválidas.")
@@ -169,6 +278,12 @@ func handleServiceError(err error) error {
 
 	if strings.Contains(err.Error(), "email already exists") {
 		return apierror.Conflict("Já existe uma conta com este email.")
+	}
+	if strings.Contains(err.Error(), "new password must be at least 8 characters") {
+		return apierror.Validation("Dados inválidos.", map[string]any{"fields": []map[string]string{{"field": "new_password", "reason": "min_length", "message": "A nova password deve ter pelo menos 8 caracteres."}}})
+	}
+	if strings.Contains(err.Error(), "current password is invalid") {
+		return apierror.Unauthorized("Password actual inválida.")
 	}
 
 	return fmt.Errorf("auth handler: %w", err)

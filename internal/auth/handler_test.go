@@ -128,3 +128,33 @@ func TestHandlerLogoutAll(t *testing.T) {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerForgotPasswordValidatesEmail(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}, Config{JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, AuthActionTokenExpiry: 24 * time.Hour, RefreshCookieName: "refresh_token"}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/auth/forgot-password", handler.ForgotPassword)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/forgot-password", strings.NewReader(`{"email":""}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerVerifyEmailValidatesToken(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{}, Config{JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, AuthActionTokenExpiry: 24 * time.Hour, RefreshCookieName: "refresh_token"}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/auth/verify-email", handler.VerifyEmail)
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/verify-email", strings.NewReader(`{"token":""}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
