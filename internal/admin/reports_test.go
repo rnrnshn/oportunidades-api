@@ -19,10 +19,10 @@ func TestHandlerListReports(t *testing.T) {
 	reporterID := uuid.New()
 	entityID := uuid.New()
 	handler := NewHandler(NewService(&mockRepository{
-		listReportsFn: func(context.Context, queries.ListReportsParams) ([]queries.Report, error) {
+		listReportsFn: func(context.Context, queries.ListReportsParams, ReportListFilters) ([]queries.Report, error) {
 			return []queries.Report{{ID: pgtype.UUID{Bytes: [16]byte(reportID), Valid: true}, ReporterID: pgtype.UUID{Bytes: [16]byte(reporterID), Valid: true}, EntityType: "course", EntityID: pgtype.UUID{Bytes: [16]byte(entityID), Valid: true}, Reason: "Informação antiga", Status: "pending"}}, nil
 		},
-		countReportsFn: func(context.Context) (int64, error) { return 1, nil },
+		countReportsFn: func(context.Context, ReportListFilters) (int64, error) { return 1, nil },
 	}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
 	app.Get("/v1/admin/reports", handler.ListReports)

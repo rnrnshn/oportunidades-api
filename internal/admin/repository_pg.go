@@ -80,11 +80,11 @@ func (r *PostgresRepository) DeactivateOpportunity(ctx context.Context, id pgtyp
 	return item, err
 }
 
-func (r *PostgresRepository) ListReports(ctx context.Context, params queries.ListReportsParams) ([]queries.Report, error) {
+func (r *PostgresRepository) ListReports(ctx context.Context, params queries.ListReportsParams, filters ReportListFilters) ([]queries.Report, error) {
 	return r.queries.ListReports(ctx, params)
 }
 
-func (r *PostgresRepository) CountReports(ctx context.Context) (int64, error) {
+func (r *PostgresRepository) CountReports(ctx context.Context, filters ReportListFilters) (int64, error) {
 	return r.queries.CountReports(ctx)
 }
 

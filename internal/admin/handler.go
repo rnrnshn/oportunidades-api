@@ -106,6 +106,11 @@ func (h *Handler) ListReports(c *fiber.Ctx) error {
 	result, err := h.service.ListReports(c.UserContext(), PaginationParams{
 		Page:    queryInt(c, "page", defaultPage),
 		PerPage: queryInt(c, "per_page", defaultPerPage),
+	}, ReportListFilters{
+		Query:      strings.TrimSpace(c.Query("q")),
+		Status:     strings.TrimSpace(c.Query("status")),
+		EntityType: strings.TrimSpace(c.Query("entity_type")),
+		Sort:       strings.TrimSpace(c.Query("sort")),
 	})
 	if err != nil {
 		return handleError(err)

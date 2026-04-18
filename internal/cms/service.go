@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,6 +32,39 @@ type Actor struct {
 type PaginationParams struct {
 	Page    int
 	PerPage int
+}
+
+type ArticleListFilters struct {
+	Query    string
+	Type     string
+	Status   string
+	Featured *bool
+	Sort     string
+}
+
+type OpportunityListFilters struct {
+	Query    string
+	Type     string
+	Verified *bool
+	Active   *bool
+	Sort     string
+}
+
+type UniversityListFilters struct {
+	Query    string
+	Type     string
+	Province string
+	Verified *bool
+	Sort     string
+}
+
+type CourseListFilters struct {
+	Query        string
+	Area         string
+	Level        string
+	Regime       string
+	UniversityID string
+	Sort         string
 }
 
 type PaginationMeta struct {
@@ -174,20 +208,28 @@ type CourseItem struct {
 
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
 
-func (s *Service) ListArticles(ctx context.Context, actor Actor, params PaginationParams) (*ArticlesResult, error) {
+func (s *Service) ListArticles(ctx context.Context, actor Actor, params PaginationParams, filters ArticleListFilters) (*ArticlesResult, error) {
 	page, perPage := normalizePagination(params)
-	items, err := s.repo.ListCMSArticles(ctx, queries.ListCMSArticlesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
-	if err != nil {
-		return nil, fmt.Errorf("cms: list articles: %w", err)
-	}
-	total, err := s.repo.CountCMSArticles(ctx)
+	totalBeforeFilter, err := s.repo.CountCMSArticles(ctx, actor, filters)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count articles: %w", err)
 	}
-	items, total, err = s.filterArticlesByActor(items, total, actor, params)
+	limit := totalBeforeFilter
+	if limit < 1 {
+		limit = 1
+	}
+	items, err := s.repo.ListCMSArticles(ctx, queries.ListCMSArticlesParams{Limit: int32(limit), Offset: 0}, actor, filters)
+	if err != nil {
+		return nil, fmt.Errorf("cms: list articles: %w", err)
+	}
+	items = filterArticles(items, filters)
+	items, _, err = s.filterArticlesByActor(items, int64(len(items)), actor, params)
 	if err != nil {
 		return nil, err
 	}
+	sortArticles(items, filters.Sort)
+	total := int64(len(items))
+	items = paginateArticles(items, page, perPage)
 	data := make([]ArticleItem, 0, len(items))
 	for _, item := range items {
 		mapped, err := mapArticle(item)
@@ -293,20 +335,28 @@ func (s *Service) UpdateArticle(ctx context.Context, actor Actor, input CreateAr
 	return &ArticleResult{Data: mapped}, nil
 }
 
-func (s *Service) ListUniversities(ctx context.Context, actor Actor, params PaginationParams) (*UniversitiesResult, error) {
+func (s *Service) ListUniversities(ctx context.Context, actor Actor, params PaginationParams, filters UniversityListFilters) (*UniversitiesResult, error) {
 	page, perPage := normalizePagination(params)
-	items, err := s.repo.ListCMSUniversities(ctx, queries.ListCMSUniversitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
-	if err != nil {
-		return nil, fmt.Errorf("cms: list universities: %w", err)
-	}
-	total, err := s.repo.CountCMSUniversities(ctx)
+	totalBeforeFilter, err := s.repo.CountCMSUniversities(ctx, actor, filters)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count universities: %w", err)
 	}
-	items, total, err = s.filterUniversitiesByActor(items, total, actor, params)
+	limit := totalBeforeFilter
+	if limit < 1 {
+		limit = 1
+	}
+	items, err := s.repo.ListCMSUniversities(ctx, queries.ListCMSUniversitiesParams{Limit: int32(limit), Offset: 0}, actor, filters)
+	if err != nil {
+		return nil, fmt.Errorf("cms: list universities: %w", err)
+	}
+	items = filterUniversities(items, filters)
+	items, _, err = s.filterUniversitiesByActor(items, int64(len(items)), actor, params)
 	if err != nil {
 		return nil, err
 	}
+	sortUniversities(items, filters.Sort)
+	total := int64(len(items))
+	items = paginateUniversities(items, page, perPage)
 	data := make([]UniversityItem, 0, len(items))
 	for _, item := range items {
 		mapped, err := mapUniversity(item)
@@ -408,20 +458,28 @@ func (s *Service) UpdateUniversity(ctx context.Context, actor Actor, input Creat
 	return &UniversityResult{Data: mapped}, nil
 }
 
-func (s *Service) ListCourses(ctx context.Context, actor Actor, params PaginationParams) (*CoursesResult, error) {
+func (s *Service) ListCourses(ctx context.Context, actor Actor, params PaginationParams, filters CourseListFilters) (*CoursesResult, error) {
 	page, perPage := normalizePagination(params)
-	items, err := s.repo.ListCMSCourses(ctx, queries.ListCMSCoursesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
-	if err != nil {
-		return nil, fmt.Errorf("cms: list courses: %w", err)
-	}
-	total, err := s.repo.CountCMSCourses(ctx)
+	totalBeforeFilter, err := s.repo.CountCMSCourses(ctx, actor, filters)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count courses: %w", err)
 	}
-	items, total, err = s.filterCoursesByActor(ctx, items, total, actor, params)
+	limit := totalBeforeFilter
+	if limit < 1 {
+		limit = 1
+	}
+	items, err := s.repo.ListCMSCourses(ctx, queries.ListCMSCoursesParams{Limit: int32(limit), Offset: 0}, actor, filters)
+	if err != nil {
+		return nil, fmt.Errorf("cms: list courses: %w", err)
+	}
+	items = filterCourses(items, filters)
+	items, _, err = s.filterCoursesByActor(ctx, items, int64(len(items)), actor, params)
 	if err != nil {
 		return nil, err
 	}
+	sortCourses(items, filters.Sort)
+	total := int64(len(items))
+	items = paginateCourses(items, page, perPage)
 	data := make([]CourseItem, 0, len(items))
 	for _, item := range items {
 		mapped, err := mapCourse(item)
@@ -559,20 +617,28 @@ func (s *Service) UpdateCourse(ctx context.Context, actor Actor, input CreateCou
 	return &CourseResult{Data: mapped}, nil
 }
 
-func (s *Service) ListOpportunities(ctx context.Context, actor Actor, params PaginationParams) (*OpportunitiesResult, error) {
+func (s *Service) ListOpportunities(ctx context.Context, actor Actor, params PaginationParams, filters OpportunityListFilters) (*OpportunitiesResult, error) {
 	page, perPage := normalizePagination(params)
-	items, err := s.repo.ListCMSOpportunities(ctx, queries.ListCMSOpportunitiesParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
-	if err != nil {
-		return nil, fmt.Errorf("cms: list opportunities: %w", err)
-	}
-	total, err := s.repo.CountCMSOpportunities(ctx)
+	totalBeforeFilter, err := s.repo.CountCMSOpportunities(ctx, actor, filters)
 	if err != nil {
 		return nil, fmt.Errorf("cms: count opportunities: %w", err)
 	}
-	items, total, err = s.filterOpportunitiesByActor(items, total, actor, params)
+	limit := totalBeforeFilter
+	if limit < 1 {
+		limit = 1
+	}
+	items, err := s.repo.ListCMSOpportunities(ctx, queries.ListCMSOpportunitiesParams{Limit: int32(limit), Offset: 0}, actor, filters)
+	if err != nil {
+		return nil, fmt.Errorf("cms: list opportunities: %w", err)
+	}
+	items = filterOpportunities(items, filters)
+	items, _, err = s.filterOpportunitiesByActor(items, int64(len(items)), actor, params)
 	if err != nil {
 		return nil, err
 	}
+	sortOpportunities(items, filters.Sort)
+	total := int64(len(items))
+	items = paginateOpportunities(items, page, perPage)
 	data := make([]OpportunityItem, 0, len(items))
 	for _, item := range items {
 		mapped, err := mapOpportunity(item)
@@ -905,6 +971,173 @@ func sameUUID(value pgtype.UUID, compare uuid.UUID) bool {
 	return uuid.UUID(value.Bytes) == compare
 }
 
+func filterArticles(items []queries.Article, filters ArticleListFilters) []queries.Article {
+	filtered := make([]queries.Article, 0, len(items))
+	query := strings.ToLower(strings.TrimSpace(filters.Query))
+	for _, item := range items {
+		if filters.Type != "" && item.Type != filters.Type {
+			continue
+		}
+		if filters.Status != "" && item.Status != filters.Status {
+			continue
+		}
+		if filters.Featured != nil && item.IsFeatured != *filters.Featured {
+			continue
+		}
+		if query != "" && !strings.Contains(strings.ToLower(item.Title+" "+item.Content), query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func sortArticles(items []queries.Article, sortKey string) {
+	switch sortKey {
+	case "title_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Title < items[j].Title })
+	case "title_desc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Title > items[j].Title })
+	case "created_at_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.Before(items[j].CreatedAt.Time) })
+	default:
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.After(items[j].CreatedAt.Time) })
+	}
+}
+
+func paginateArticles(items []queries.Article, page, perPage int) []queries.Article {
+	return paginateAny(items, page, perPage)
+}
+
+func filterOpportunities(items []queries.Opportunity, filters OpportunityListFilters) []queries.Opportunity {
+	filtered := make([]queries.Opportunity, 0, len(items))
+	query := strings.ToLower(strings.TrimSpace(filters.Query))
+	for _, item := range items {
+		if filters.Type != "" && item.Type != filters.Type {
+			continue
+		}
+		if filters.Verified != nil && item.Verified != *filters.Verified {
+			continue
+		}
+		if filters.Active != nil && item.IsActive != *filters.Active {
+			continue
+		}
+		if query != "" && !strings.Contains(strings.ToLower(item.Title+" "+item.EntityName+" "+item.Description), query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func sortOpportunities(items []queries.Opportunity, sortKey string) {
+	switch sortKey {
+	case "title_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Title < items[j].Title })
+	case "title_desc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Title > items[j].Title })
+	case "deadline_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Deadline.Time.Before(items[j].Deadline.Time) })
+	default:
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.After(items[j].CreatedAt.Time) })
+	}
+}
+
+func paginateOpportunities(items []queries.Opportunity, page, perPage int) []queries.Opportunity {
+	return paginateAny(items, page, perPage)
+}
+
+func filterUniversities(items []queries.University, filters UniversityListFilters) []queries.University {
+	filtered := make([]queries.University, 0, len(items))
+	query := strings.ToLower(strings.TrimSpace(filters.Query))
+	for _, item := range items {
+		if filters.Type != "" && item.Type != filters.Type {
+			continue
+		}
+		if filters.Province != "" && item.Province != filters.Province {
+			continue
+		}
+		if filters.Verified != nil && item.Verified != *filters.Verified {
+			continue
+		}
+		if query != "" && !strings.Contains(strings.ToLower(item.Name+" "+textValue(item.Description)), query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func sortUniversities(items []queries.University, sortKey string) {
+	switch sortKey {
+	case "name_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	case "name_desc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Name > items[j].Name })
+	case "created_at_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.Before(items[j].CreatedAt.Time) })
+	default:
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.After(items[j].CreatedAt.Time) })
+	}
+}
+
+func paginateUniversities(items []queries.University, page, perPage int) []queries.University {
+	return paginateAny(items, page, perPage)
+}
+
+func filterCourses(items []queries.Course, filters CourseListFilters) []queries.Course {
+	filtered := make([]queries.Course, 0, len(items))
+	query := strings.ToLower(strings.TrimSpace(filters.Query))
+	for _, item := range items {
+		if filters.Area != "" && item.Area != filters.Area {
+			continue
+		}
+		if filters.Level != "" && item.Level != filters.Level {
+			continue
+		}
+		if filters.Regime != "" && item.Regime != filters.Regime {
+			continue
+		}
+		if filters.UniversityID != "" && item.UniversityID.Valid && uuid.UUID(item.UniversityID.Bytes).String() != filters.UniversityID {
+			continue
+		}
+		if query != "" && !strings.Contains(strings.ToLower(item.Name+" "+item.Area), query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func sortCourses(items []queries.Course, sortKey string) {
+	switch sortKey {
+	case "name_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	case "name_desc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Name > items[j].Name })
+	case "created_at_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.Before(items[j].CreatedAt.Time) })
+	default:
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.After(items[j].CreatedAt.Time) })
+	}
+}
+
+func paginateCourses(items []queries.Course, page, perPage int) []queries.Course {
+	return paginateAny(items, page, perPage)
+}
+
+func paginateAny[T any](items []T, page, perPage int) []T {
+	start := (page - 1) * perPage
+	if start >= len(items) {
+		return []T{}
+	}
+	end := start + perPage
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[start:end]
+}
+
 func uuidToPg(value uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: [16]byte(value), Valid: true} }
 func uuidFromPg(value pgtype.UUID) (uuid.UUID, error) {
 	if !value.Valid {
@@ -918,6 +1151,13 @@ func textToPg(value string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: value, Valid: true}
+}
+
+func textValue(value pgtype.Text) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String
 }
 
 func chooseInt4(value int32, valid bool) pgtype.Int4 {

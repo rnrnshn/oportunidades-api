@@ -74,7 +74,7 @@ func (h *Handler) ListArticles(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
-	result, err := h.service.ListArticles(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	result, err := h.service.ListArticles(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, ArticleListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Status: strings.TrimSpace(c.Query("status")), Featured: queryBool(c, "featured"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
 	}
@@ -160,7 +160,7 @@ func (h *Handler) ListUniversities(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
-	result, err := h.service.ListUniversities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	result, err := h.service.ListUniversities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, UniversityListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Province: strings.TrimSpace(c.Query("province")), Verified: queryBool(c, "verified"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
 	}
@@ -235,7 +235,7 @@ func (h *Handler) ListCourses(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
-	result, err := h.service.ListCourses(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	result, err := h.service.ListCourses(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, CourseListFilters{Query: strings.TrimSpace(c.Query("q")), Area: strings.TrimSpace(c.Query("area")), Level: strings.TrimSpace(c.Query("level")), Regime: strings.TrimSpace(c.Query("regime")), UniversityID: strings.TrimSpace(c.Query("university_id")), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
 	}
@@ -314,7 +314,7 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
-	result, err := h.service.ListOpportunities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)})
+	result, err := h.service.ListOpportunities(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, PaginationParams{Page: queryInt(c, "page", defaultPage), PerPage: queryInt(c, "per_page", defaultPerPage)}, OpportunityListFilters{Query: strings.TrimSpace(c.Query("q")), Type: strings.TrimSpace(c.Query("type")), Verified: queryBool(c, "verified"), Active: queryBool(c, "active"), Sort: strings.TrimSpace(c.Query("sort"))})
 	if err != nil {
 		return handleError(err)
 	}
@@ -435,4 +435,20 @@ func queryInt(c *fiber.Ctx, key string, fallback int) int {
 		return fallback
 	}
 	return value
+}
+
+func queryBool(c *fiber.Ctx, key string) *bool {
+	rawValue := strings.TrimSpace(strings.ToLower(c.Query(key)))
+	if rawValue == "" {
+		return nil
+	}
+	if rawValue == "true" {
+		value := true
+		return &value
+	}
+	if rawValue == "false" {
+		value := false
+		return &value
+	}
+	return nil
 }

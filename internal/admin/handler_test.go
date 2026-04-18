@@ -23,8 +23,8 @@ type mockRepository struct {
 	verifyOpportunityFn     func(context.Context, pgtype.UUID) (queries.Opportunity, error)
 	rejectOpportunityFn     func(context.Context, pgtype.UUID) (queries.Opportunity, error)
 	deactivateOpportunityFn func(context.Context, pgtype.UUID) (queries.Opportunity, error)
-	listReportsFn           func(context.Context, queries.ListReportsParams) ([]queries.Report, error)
-	countReportsFn          func(context.Context) (int64, error)
+	listReportsFn           func(context.Context, queries.ListReportsParams, ReportListFilters) ([]queries.Report, error)
+	countReportsFn          func(context.Context, ReportListFilters) (int64, error)
 	getReportByIDFn         func(context.Context, pgtype.UUID) (queries.Report, error)
 	updateReportStatusFn    func(context.Context, queries.UpdateReportStatusParams) (queries.Report, error)
 }
@@ -53,11 +53,11 @@ func (m *mockRepository) RejectOpportunity(ctx context.Context, id pgtype.UUID) 
 func (m *mockRepository) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	return m.deactivateOpportunityFn(ctx, id)
 }
-func (m *mockRepository) ListReports(ctx context.Context, params queries.ListReportsParams) ([]queries.Report, error) {
-	return m.listReportsFn(ctx, params)
+func (m *mockRepository) ListReports(ctx context.Context, params queries.ListReportsParams, filters ReportListFilters) ([]queries.Report, error) {
+	return m.listReportsFn(ctx, params, filters)
 }
-func (m *mockRepository) CountReports(ctx context.Context) (int64, error) {
-	return m.countReportsFn(ctx)
+func (m *mockRepository) CountReports(ctx context.Context, filters ReportListFilters) (int64, error) {
+	return m.countReportsFn(ctx, filters)
 }
 func (m *mockRepository) GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error) {
 	return m.getReportByIDFn(ctx, id)

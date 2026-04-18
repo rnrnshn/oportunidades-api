@@ -24,11 +24,11 @@ func (r *PostgresRepository) CreateOpportunity(ctx context.Context, params queri
 	return r.queries.CreateOpportunity(ctx, params)
 }
 
-func (r *PostgresRepository) ListCMSArticles(ctx context.Context, params queries.ListCMSArticlesParams) ([]queries.Article, error) {
+func (r *PostgresRepository) ListCMSArticles(ctx context.Context, params queries.ListCMSArticlesParams, actor Actor, filters ArticleListFilters) ([]queries.Article, error) {
 	return r.queries.ListCMSArticles(ctx, params)
 }
 
-func (r *PostgresRepository) CountCMSArticles(ctx context.Context) (int64, error) {
+func (r *PostgresRepository) CountCMSArticles(ctx context.Context, actor Actor, filters ArticleListFilters) (int64, error) {
 	return r.queries.CountCMSArticles(ctx)
 }
 
@@ -36,11 +36,11 @@ func (r *PostgresRepository) CreateUniversity(ctx context.Context, params querie
 	return r.queries.CreateUniversity(ctx, params)
 }
 
-func (r *PostgresRepository) ListCMSUniversities(ctx context.Context, params queries.ListCMSUniversitiesParams) ([]queries.University, error) {
+func (r *PostgresRepository) ListCMSUniversities(ctx context.Context, params queries.ListCMSUniversitiesParams, actor Actor, filters UniversityListFilters) ([]queries.University, error) {
 	return r.queries.ListCMSUniversities(ctx, params)
 }
 
-func (r *PostgresRepository) CountCMSUniversities(ctx context.Context) (int64, error) {
+func (r *PostgresRepository) CountCMSUniversities(ctx context.Context, actor Actor, filters UniversityListFilters) (int64, error) {
 	return r.queries.CountCMSUniversities(ctx)
 }
 
@@ -72,11 +72,11 @@ func (r *PostgresRepository) CreateCourse(ctx context.Context, params queries.Cr
 	return r.queries.CreateCourse(ctx, params)
 }
 
-func (r *PostgresRepository) ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams) ([]queries.Course, error) {
+func (r *PostgresRepository) ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams, actor Actor, filters CourseListFilters) ([]queries.Course, error) {
 	return r.queries.ListCMSCourses(ctx, params)
 }
 
-func (r *PostgresRepository) CountCMSCourses(ctx context.Context) (int64, error) {
+func (r *PostgresRepository) CountCMSCourses(ctx context.Context, actor Actor, filters CourseListFilters) (int64, error) {
 	return r.queries.CountCMSCourses(ctx)
 }
 
@@ -92,11 +92,11 @@ func (r *PostgresRepository) UpdateCourse(ctx context.Context, params queries.Up
 	return r.queries.UpdateCourse(ctx, params)
 }
 
-func (r *PostgresRepository) ListCMSOpportunities(ctx context.Context, params queries.ListCMSOpportunitiesParams) ([]queries.Opportunity, error) {
+func (r *PostgresRepository) ListCMSOpportunities(ctx context.Context, params queries.ListCMSOpportunitiesParams, actor Actor, filters OpportunityListFilters) ([]queries.Opportunity, error) {
 	return r.queries.ListCMSOpportunities(ctx, params)
 }
 
-func (r *PostgresRepository) CountCMSOpportunities(ctx context.Context) (int64, error) {
+func (r *PostgresRepository) CountCMSOpportunities(ctx context.Context, actor Actor, filters OpportunityListFilters) (int64, error) {
 	return r.queries.CountCMSOpportunities(ctx)
 }
 

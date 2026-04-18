@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,6 +39,13 @@ type ReportResult struct {
 type PaginationParams struct {
 	Page    int
 	PerPage int
+}
+
+type ReportListFilters struct {
+	Query      string
+	Status     string
+	EntityType string
+	Sort       string
 }
 
 type PaginationMeta struct {
@@ -194,16 +202,24 @@ func (s *Service) DeactivateOpportunity(ctx context.Context, opportunityID strin
 	return &OpportunityResult{Data: mapped}, nil
 }
 
-func (s *Service) ListReports(ctx context.Context, params PaginationParams) (*ReportsResult, error) {
+func (s *Service) ListReports(ctx context.Context, params PaginationParams, filters ReportListFilters) (*ReportsResult, error) {
 	page, perPage := normalizePagination(params)
-	items, err := s.repo.ListReports(ctx, queries.ListReportsParams{Limit: int32(perPage), Offset: int32((page - 1) * perPage)})
-	if err != nil {
-		return nil, fmt.Errorf("admin: list reports: %w", err)
-	}
-	total, err := s.repo.CountReports(ctx)
+	totalBeforeFilter, err := s.repo.CountReports(ctx, filters)
 	if err != nil {
 		return nil, fmt.Errorf("admin: count reports: %w", err)
 	}
+	limit := totalBeforeFilter
+	if limit < 1 {
+		limit = 1
+	}
+	items, err := s.repo.ListReports(ctx, queries.ListReportsParams{Limit: int32(limit), Offset: 0}, filters)
+	if err != nil {
+		return nil, fmt.Errorf("admin: list reports: %w", err)
+	}
+	items = filterReports(items, filters)
+	sortReports(items, filters.Sort)
+	total := int64(len(items))
+	items = paginateReports(items, page, perPage)
 	data := make([]ReportItem, 0, len(items))
 	for _, item := range items {
 		mapped, err := mapReport(item)
@@ -213,6 +229,51 @@ func (s *Service) ListReports(ctx context.Context, params PaginationParams) (*Re
 		data = append(data, mapped)
 	}
 	return &ReportsResult{Data: data, Meta: buildMeta(total, page, perPage)}, nil
+}
+
+func filterReports(items []queries.Report, filters ReportListFilters) []queries.Report {
+	filtered := make([]queries.Report, 0, len(items))
+	query := strings.ToLower(strings.TrimSpace(filters.Query))
+	status := strings.TrimSpace(filters.Status)
+	entityType := strings.TrimSpace(filters.EntityType)
+	for _, item := range items {
+		if status != "" && item.Status != status {
+			continue
+		}
+		if entityType != "" && item.EntityType != entityType {
+			continue
+		}
+		if query != "" && !strings.Contains(strings.ToLower(item.Reason), query) {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func sortReports(items []queries.Report, sortKey string) {
+	switch strings.TrimSpace(sortKey) {
+	case "created_at_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.Before(items[j].CreatedAt.Time) })
+	case "status_asc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Status < items[j].Status })
+	case "status_desc":
+		sort.SliceStable(items, func(i, j int) bool { return items[i].Status > items[j].Status })
+	default:
+		sort.SliceStable(items, func(i, j int) bool { return items[i].CreatedAt.Time.After(items[j].CreatedAt.Time) })
+	}
+}
+
+func paginateReports(items []queries.Report, page int, perPage int) []queries.Report {
+	start := (page - 1) * perPage
+	if start >= len(items) {
+		return []queries.Report{}
+	}
+	end := start + perPage
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[start:end]
 }
 
 func (s *Service) UpdateReportStatus(ctx context.Context, input UpdateReportStatusInput) (*ReportResult, error) {

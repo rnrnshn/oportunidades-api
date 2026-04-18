@@ -19,22 +19,22 @@ import (
 type mockRepository struct {
 	createArticleFn         func(context.Context, queries.CreateArticleParams) (queries.Article, error)
 	createOpportunityFn     func(context.Context, queries.CreateOpportunityParams) (queries.Opportunity, error)
-	listCMSArticlesFn       func(context.Context, queries.ListCMSArticlesParams) ([]queries.Article, error)
-	countCMSArticlesFn      func(context.Context) (int64, error)
+	listCMSArticlesFn       func(context.Context, queries.ListCMSArticlesParams, Actor, ArticleListFilters) ([]queries.Article, error)
+	countCMSArticlesFn      func(context.Context, Actor, ArticleListFilters) (int64, error)
 	getArticleByIDFn        func(context.Context, pgtype.UUID) (queries.Article, error)
 	updateArticleFn         func(context.Context, queries.UpdateArticleParams) (queries.Article, error)
 	createUniversityFn      func(context.Context, queries.CreateUniversityParams) (queries.University, error)
-	listCMSUniversitiesFn   func(context.Context, queries.ListCMSUniversitiesParams) ([]queries.University, error)
-	countCMSUniversitiesFn  func(context.Context) (int64, error)
+	listCMSUniversitiesFn   func(context.Context, queries.ListCMSUniversitiesParams, Actor, UniversityListFilters) ([]queries.University, error)
+	countCMSUniversitiesFn  func(context.Context, Actor, UniversityListFilters) (int64, error)
 	getUniversityByIDFn     func(context.Context, pgtype.UUID) (queries.University, error)
 	updateUniversityFn      func(context.Context, queries.UpdateUniversityParams) (queries.University, error)
 	createCourseFn          func(context.Context, queries.CreateCourseParams) (queries.Course, error)
-	listCMSCoursesFn        func(context.Context, queries.ListCMSCoursesParams) ([]queries.Course, error)
-	countCMSCoursesFn       func(context.Context) (int64, error)
+	listCMSCoursesFn        func(context.Context, queries.ListCMSCoursesParams, Actor, CourseListFilters) ([]queries.Course, error)
+	countCMSCoursesFn       func(context.Context, Actor, CourseListFilters) (int64, error)
 	getCourseByIDFn         func(context.Context, pgtype.UUID) (queries.Course, error)
 	updateCourseFn          func(context.Context, queries.UpdateCourseParams) (queries.Course, error)
-	listCMSOpportunitiesFn  func(context.Context, queries.ListCMSOpportunitiesParams) ([]queries.Opportunity, error)
-	countCMSOpportunitiesFn func(context.Context) (int64, error)
+	listCMSOpportunitiesFn  func(context.Context, queries.ListCMSOpportunitiesParams, Actor, OpportunityListFilters) ([]queries.Opportunity, error)
+	countCMSOpportunitiesFn func(context.Context, Actor, OpportunityListFilters) (int64, error)
 	getOpportunityByIDFn    func(context.Context, pgtype.UUID) (queries.Opportunity, error)
 	updateOpportunityFn     func(context.Context, queries.UpdateOpportunityParams) (queries.Opportunity, error)
 }
@@ -45,11 +45,11 @@ func (m *mockRepository) CreateArticle(ctx context.Context, params queries.Creat
 func (m *mockRepository) CreateOpportunity(ctx context.Context, params queries.CreateOpportunityParams) (queries.Opportunity, error) {
 	return m.createOpportunityFn(ctx, params)
 }
-func (m *mockRepository) ListCMSArticles(ctx context.Context, params queries.ListCMSArticlesParams) ([]queries.Article, error) {
-	return m.listCMSArticlesFn(ctx, params)
+func (m *mockRepository) ListCMSArticles(ctx context.Context, params queries.ListCMSArticlesParams, actor Actor, filters ArticleListFilters) ([]queries.Article, error) {
+	return m.listCMSArticlesFn(ctx, params, actor, filters)
 }
-func (m *mockRepository) CountCMSArticles(ctx context.Context) (int64, error) {
-	return m.countCMSArticlesFn(ctx)
+func (m *mockRepository) CountCMSArticles(ctx context.Context, actor Actor, filters ArticleListFilters) (int64, error) {
+	return m.countCMSArticlesFn(ctx, actor, filters)
 }
 func (m *mockRepository) GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
 	return m.getArticleByIDFn(ctx, id)
@@ -60,11 +60,11 @@ func (m *mockRepository) UpdateArticle(ctx context.Context, params queries.Updat
 func (m *mockRepository) CreateUniversity(ctx context.Context, params queries.CreateUniversityParams) (queries.University, error) {
 	return m.createUniversityFn(ctx, params)
 }
-func (m *mockRepository) ListCMSUniversities(ctx context.Context, params queries.ListCMSUniversitiesParams) ([]queries.University, error) {
-	return m.listCMSUniversitiesFn(ctx, params)
+func (m *mockRepository) ListCMSUniversities(ctx context.Context, params queries.ListCMSUniversitiesParams, actor Actor, filters UniversityListFilters) ([]queries.University, error) {
+	return m.listCMSUniversitiesFn(ctx, params, actor, filters)
 }
-func (m *mockRepository) CountCMSUniversities(ctx context.Context) (int64, error) {
-	return m.countCMSUniversitiesFn(ctx)
+func (m *mockRepository) CountCMSUniversities(ctx context.Context, actor Actor, filters UniversityListFilters) (int64, error) {
+	return m.countCMSUniversitiesFn(ctx, actor, filters)
 }
 func (m *mockRepository) GetUniversityByID(ctx context.Context, id pgtype.UUID) (queries.University, error) {
 	return m.getUniversityByIDFn(ctx, id)
@@ -75,11 +75,11 @@ func (m *mockRepository) UpdateUniversity(ctx context.Context, params queries.Up
 func (m *mockRepository) CreateCourse(ctx context.Context, params queries.CreateCourseParams) (queries.Course, error) {
 	return m.createCourseFn(ctx, params)
 }
-func (m *mockRepository) ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams) ([]queries.Course, error) {
-	return m.listCMSCoursesFn(ctx, params)
+func (m *mockRepository) ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams, actor Actor, filters CourseListFilters) ([]queries.Course, error) {
+	return m.listCMSCoursesFn(ctx, params, actor, filters)
 }
-func (m *mockRepository) CountCMSCourses(ctx context.Context) (int64, error) {
-	return m.countCMSCoursesFn(ctx)
+func (m *mockRepository) CountCMSCourses(ctx context.Context, actor Actor, filters CourseListFilters) (int64, error) {
+	return m.countCMSCoursesFn(ctx, actor, filters)
 }
 func (m *mockRepository) GetCourseByID(ctx context.Context, id pgtype.UUID) (queries.Course, error) {
 	return m.getCourseByIDFn(ctx, id)
@@ -87,11 +87,11 @@ func (m *mockRepository) GetCourseByID(ctx context.Context, id pgtype.UUID) (que
 func (m *mockRepository) UpdateCourse(ctx context.Context, params queries.UpdateCourseParams) (queries.Course, error) {
 	return m.updateCourseFn(ctx, params)
 }
-func (m *mockRepository) ListCMSOpportunities(ctx context.Context, params queries.ListCMSOpportunitiesParams) ([]queries.Opportunity, error) {
-	return m.listCMSOpportunitiesFn(ctx, params)
+func (m *mockRepository) ListCMSOpportunities(ctx context.Context, params queries.ListCMSOpportunitiesParams, actor Actor, filters OpportunityListFilters) ([]queries.Opportunity, error) {
+	return m.listCMSOpportunitiesFn(ctx, params, actor, filters)
 }
-func (m *mockRepository) CountCMSOpportunities(ctx context.Context) (int64, error) {
-	return m.countCMSOpportunitiesFn(ctx)
+func (m *mockRepository) CountCMSOpportunities(ctx context.Context, actor Actor, filters OpportunityListFilters) (int64, error) {
+	return m.countCMSOpportunitiesFn(ctx, actor, filters)
 }
 func (m *mockRepository) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	return m.getOpportunityByIDFn(ctx, id)
