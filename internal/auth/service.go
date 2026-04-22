@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,6 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	appemail "github.com/rnrnshn/oportunidades-api/pkg/email"
 )
 
 var ErrInvalidCredentials = errors.New("auth: invalid credentials")
@@ -34,6 +37,8 @@ type Service struct {
 	refreshCookieName     string
 	refreshCookieSecure   bool
 	exposeDebugTokens     bool
+	emailSender           appemail.Sender
+	appPublicURL          string
 }
 
 type Config struct {
@@ -44,6 +49,8 @@ type Config struct {
 	RefreshCookieName     string
 	RefreshCookieSecure   bool
 	ExposeDebugTokens     bool
+	EmailSender           appemail.Sender
+	AppPublicURL          string
 }
 
 type RegisterInput struct {
@@ -100,6 +107,8 @@ func NewService(repo Repository, config Config) *Service {
 		refreshCookieName:     config.RefreshCookieName,
 		refreshCookieSecure:   config.RefreshCookieSecure,
 		exposeDebugTokens:     config.ExposeDebugTokens,
+		emailSender:           config.EmailSender,
+		appPublicURL:          config.AppPublicURL,
 	}
 }
 
@@ -269,6 +278,9 @@ func (s *Service) SendVerification(ctx context.Context, input SendVerificationIn
 		return nil, err
 	}
 	result := &ActionResult{Message: "Instruções de verificação preparadas com sucesso."}
+	if err := s.sendVerificationEmail(ctx, user.Email, user.Name, rawToken); err != nil {
+		return nil, err
+	}
 	if s.exposeDebugTokens {
 		result.DebugToken = rawToken
 	}
@@ -435,6 +447,40 @@ func (s *Service) getValidActionToken(ctx context.Context, rawToken string, purp
 		return queries.AuthActionToken{}, ErrInvalidCredentials
 	}
 	return actionToken, nil
+}
+
+func (s *Service) sendVerificationEmail(ctx context.Context, recipientEmail string, recipientName string, token string) error {
+	if s.emailSender == nil {
+		return nil
+	}
+	verificationURL, err := s.verificationURL(token)
+	if err != nil {
+		return fmt.Errorf("auth: build verification url: %w", err)
+	}
+	if err := s.emailSender.SendVerificationEmail(ctx, appemail.VerificationMessage{
+		To:              recipientEmail,
+		RecipientName:   recipientName,
+		VerificationURL: verificationURL,
+	}); err != nil {
+		return fmt.Errorf("auth: send verification email: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) verificationURL(token string) (string, error) {
+	baseURL := strings.TrimSpace(s.appPublicURL)
+	if baseURL == "" {
+		return "", fmt.Errorf("app public url is not configured")
+	}
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid app public url: %w", err)
+	}
+	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") + "/auth/verify-email"
+	query := parsedURL.Query()
+	query.Set("token", token)
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String(), nil
 }
 
 func profileFromUser(user queries.User, userID string) UserProfile {

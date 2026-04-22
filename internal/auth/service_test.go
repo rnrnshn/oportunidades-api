@@ -9,8 +9,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	appemail "github.com/rnrnshn/oportunidades-api/pkg/email"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type mockEmailSender struct {
+	sendVerificationEmailFn func(context.Context, appemail.VerificationMessage) error
+}
+
+func (m mockEmailSender) SendVerificationEmail(ctx context.Context, message appemail.VerificationMessage) error {
+	if m.sendVerificationEmailFn == nil {
+		return nil
+	}
+	return m.sendVerificationEmailFn(ctx, message)
+}
 
 type mockRepository struct {
 	createUserFn                   func(context.Context, queries.CreateUserParams) (queries.User, error)
@@ -304,6 +316,71 @@ func TestServiceVerifyEmail(t *testing.T) {
 	result, err := service.VerifyEmail(context.Background(), VerifyEmailInput{Token: "verify-token"})
 	if err != nil || !verified || result.Message == "" {
 		t.Fatalf("verify email failed: result=%+v err=%v verified=%v", result, err, verified)
+	}
+}
+
+func TestServiceSendVerificationSendsEmail(t *testing.T) {
+	userID := uuid.New()
+	called := false
+	service := NewService(&mockRepository{
+		getUserByIDFn: func(context.Context, pgtype.UUID) (queries.User, error) {
+			return queries.User{ID: uuidToPg(userID), Email: "user@example.com", Name: "User"}, nil
+		},
+		createAuthActionTokenFn: func(context.Context, queries.CreateAuthActionTokenParams) (queries.AuthActionToken, error) {
+			return queries.AuthActionToken{}, nil
+		},
+	}, Config{
+		JWTSecret:             "secret",
+		JWTExpiry:             15 * time.Minute,
+		RefreshTokenExpiry:    30 * 24 * time.Hour,
+		AuthActionTokenExpiry: 24 * time.Hour,
+		RefreshCookieName:     "refresh_token",
+		AppPublicURL:          "https://oportunidades.co.mz",
+		EmailSender: mockEmailSender{sendVerificationEmailFn: func(_ context.Context, message appemail.VerificationMessage) error {
+			called = true
+			if message.To != "user@example.com" {
+				t.Fatalf("unexpected recipient: %s", message.To)
+			}
+			if message.VerificationURL == "" {
+				t.Fatal("expected verification url")
+			}
+			return nil
+		}},
+	})
+
+	result, err := service.SendVerification(context.Background(), SendVerificationInput{UserID: userID.String()})
+	if err != nil {
+		t.Fatalf("send verification returned error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected verification email to be sent")
+	}
+	if result.Message == "" {
+		t.Fatal("expected success message")
+	}
+}
+
+func TestServiceSendVerificationRequiresPublicURLWhenSenderConfigured(t *testing.T) {
+	userID := uuid.New()
+	service := NewService(&mockRepository{
+		getUserByIDFn: func(context.Context, pgtype.UUID) (queries.User, error) {
+			return queries.User{ID: uuidToPg(userID), Email: "user@example.com", Name: "User"}, nil
+		},
+		createAuthActionTokenFn: func(context.Context, queries.CreateAuthActionTokenParams) (queries.AuthActionToken, error) {
+			return queries.AuthActionToken{}, nil
+		},
+	}, Config{
+		JWTSecret:             "secret",
+		JWTExpiry:             15 * time.Minute,
+		RefreshTokenExpiry:    30 * 24 * time.Hour,
+		AuthActionTokenExpiry: 24 * time.Hour,
+		RefreshCookieName:     "refresh_token",
+		EmailSender:           mockEmailSender{},
+	})
+
+	_, err := service.SendVerification(context.Background(), SendVerificationInput{UserID: userID.String()})
+	if err == nil {
+		t.Fatal("expected error when app public url is missing")
 	}
 }
 

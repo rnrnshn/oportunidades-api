@@ -25,6 +25,7 @@ import (
 	appuploads "github.com/rnrnshn/oportunidades-api/internal/uploads"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/db"
+	appemail "github.com/rnrnshn/oportunidades-api/pkg/email"
 	appmiddleware "github.com/rnrnshn/oportunidades-api/pkg/middleware"
 	appstorage "github.com/rnrnshn/oportunidades-api/pkg/storage"
 )
@@ -107,6 +108,7 @@ func getEnv(key string, fallback string) string {
 
 func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	authRepository := appauth.NewPostgresRepository(pool)
+	emailSender := appemail.NewResendSender(getEnv("RESEND_API_KEY", ""), getEnv("EMAIL_FROM", ""))
 	authService := appauth.NewService(authRepository, appauth.Config{
 		JWTSecret:             getEnv("JWT_SECRET", "change-me"),
 		JWTExpiry:             time.Duration(getEnvAsInt("JWT_EXPIRY_MINUTES", 15)) * time.Minute,
@@ -115,6 +117,8 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 		RefreshCookieName:     "refresh_token",
 		RefreshCookieSecure:   strings.EqualFold(getEnv("ENV", "development"), "production"),
 		ExposeDebugTokens:     !strings.EqualFold(getEnv("ENV", "development"), "production"),
+		EmailSender:           emailSender,
+		AppPublicURL:          getEnv("APP_PUBLIC_URL", "http://localhost:3000"),
 	})
 	authHandler := appauth.NewHandler(authService)
 	accountRepository := appaccount.NewPostgresRepository(pool)
