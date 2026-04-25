@@ -17,26 +17,32 @@ import (
 )
 
 type mockRepository struct {
-	createArticleFn         func(context.Context, queries.CreateArticleParams) (queries.Article, error)
-	createOpportunityFn     func(context.Context, queries.CreateOpportunityParams) (queries.Opportunity, error)
-	listCMSArticlesFn       func(context.Context, queries.ListCMSArticlesParams, Actor, ArticleListFilters) ([]queries.Article, error)
-	countCMSArticlesFn      func(context.Context, Actor, ArticleListFilters) (int64, error)
-	getArticleByIDFn        func(context.Context, pgtype.UUID) (queries.Article, error)
-	updateArticleFn         func(context.Context, queries.UpdateArticleParams) (queries.Article, error)
-	createUniversityFn      func(context.Context, queries.CreateUniversityParams) (queries.University, error)
-	listCMSUniversitiesFn   func(context.Context, queries.ListCMSUniversitiesParams, Actor, UniversityListFilters) ([]queries.University, error)
-	countCMSUniversitiesFn  func(context.Context, Actor, UniversityListFilters) (int64, error)
-	getUniversityByIDFn     func(context.Context, pgtype.UUID) (queries.University, error)
-	updateUniversityFn      func(context.Context, queries.UpdateUniversityParams) (queries.University, error)
-	createCourseFn          func(context.Context, queries.CreateCourseParams) (queries.Course, error)
-	listCMSCoursesFn        func(context.Context, queries.ListCMSCoursesParams, Actor, CourseListFilters) ([]queries.Course, error)
-	countCMSCoursesFn       func(context.Context, Actor, CourseListFilters) (int64, error)
-	getCourseByIDFn         func(context.Context, pgtype.UUID) (queries.Course, error)
-	updateCourseFn          func(context.Context, queries.UpdateCourseParams) (queries.Course, error)
-	listCMSOpportunitiesFn  func(context.Context, queries.ListCMSOpportunitiesParams, Actor, OpportunityListFilters) ([]queries.Opportunity, error)
-	countCMSOpportunitiesFn func(context.Context, Actor, OpportunityListFilters) (int64, error)
-	getOpportunityByIDFn    func(context.Context, pgtype.UUID) (queries.Opportunity, error)
-	updateOpportunityFn     func(context.Context, queries.UpdateOpportunityParams) (queries.Opportunity, error)
+	createArticleFn                                  func(context.Context, queries.CreateArticleParams) (queries.Article, error)
+	createOpportunityFn                              func(context.Context, queries.CreateOpportunityParams) (queries.Opportunity, error)
+	listCMSArticlesFn                                func(context.Context, queries.ListCMSArticlesParams, Actor, ArticleListFilters) ([]queries.Article, error)
+	countCMSArticlesFn                               func(context.Context, Actor, ArticleListFilters) (int64, error)
+	getArticleByIDFn                                 func(context.Context, pgtype.UUID) (queries.Article, error)
+	updateArticleFn                                  func(context.Context, queries.UpdateArticleParams) (queries.Article, error)
+	createUniversityFn                               func(context.Context, queries.CreateUniversityParams) (queries.University, error)
+	listCMSUniversitiesFn                            func(context.Context, queries.ListCMSUniversitiesParams, Actor, UniversityListFilters) ([]queries.University, error)
+	countCMSUniversitiesFn                           func(context.Context, Actor, UniversityListFilters) (int64, error)
+	getUniversityByIDFn                              func(context.Context, pgtype.UUID) (queries.University, error)
+	updateUniversityFn                               func(context.Context, queries.UpdateUniversityParams) (queries.University, error)
+	listUniversityFeesByUniversityIDFn               func(context.Context, pgtype.UUID) ([]queries.UniversityFee, error)
+	softDeleteUniversityFeesByUniversityIDFn         func(context.Context, pgtype.UUID) error
+	createUniversityFeeFn                            func(context.Context, queries.CreateUniversityFeeParams) (queries.UniversityFee, error)
+	listUniversityScholarshipsByUniversityIDFn       func(context.Context, pgtype.UUID) ([]queries.UniversityScholarship, error)
+	softDeleteUniversityScholarshipsByUniversityIDFn func(context.Context, pgtype.UUID) error
+	createUniversityScholarshipFn                    func(context.Context, queries.CreateUniversityScholarshipParams) (queries.UniversityScholarship, error)
+	createCourseFn                                   func(context.Context, queries.CreateCourseParams) (queries.Course, error)
+	listCMSCoursesFn                                 func(context.Context, queries.ListCMSCoursesParams, Actor, CourseListFilters) ([]queries.Course, error)
+	countCMSCoursesFn                                func(context.Context, Actor, CourseListFilters) (int64, error)
+	getCourseByIDFn                                  func(context.Context, pgtype.UUID) (queries.Course, error)
+	updateCourseFn                                   func(context.Context, queries.UpdateCourseParams) (queries.Course, error)
+	listCMSOpportunitiesFn                           func(context.Context, queries.ListCMSOpportunitiesParams, Actor, OpportunityListFilters) ([]queries.Opportunity, error)
+	countCMSOpportunitiesFn                          func(context.Context, Actor, OpportunityListFilters) (int64, error)
+	getOpportunityByIDFn                             func(context.Context, pgtype.UUID) (queries.Opportunity, error)
+	updateOpportunityFn                              func(context.Context, queries.UpdateOpportunityParams) (queries.Opportunity, error)
 }
 
 func (m *mockRepository) CreateArticle(ctx context.Context, params queries.CreateArticleParams) (queries.Article, error) {
@@ -71,6 +77,42 @@ func (m *mockRepository) GetUniversityByID(ctx context.Context, id pgtype.UUID) 
 }
 func (m *mockRepository) UpdateUniversity(ctx context.Context, params queries.UpdateUniversityParams) (queries.University, error) {
 	return m.updateUniversityFn(ctx, params)
+}
+func (m *mockRepository) ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityFee, error) {
+	if m.listUniversityFeesByUniversityIDFn == nil {
+		return []queries.UniversityFee{}, nil
+	}
+	return m.listUniversityFeesByUniversityIDFn(ctx, universityID)
+}
+func (m *mockRepository) SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	if m.softDeleteUniversityFeesByUniversityIDFn == nil {
+		return nil
+	}
+	return m.softDeleteUniversityFeesByUniversityIDFn(ctx, universityID)
+}
+func (m *mockRepository) CreateUniversityFee(ctx context.Context, params queries.CreateUniversityFeeParams) (queries.UniversityFee, error) {
+	if m.createUniversityFeeFn == nil {
+		return queries.UniversityFee{}, nil
+	}
+	return m.createUniversityFeeFn(ctx, params)
+}
+func (m *mockRepository) ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityScholarship, error) {
+	if m.listUniversityScholarshipsByUniversityIDFn == nil {
+		return []queries.UniversityScholarship{}, nil
+	}
+	return m.listUniversityScholarshipsByUniversityIDFn(ctx, universityID)
+}
+func (m *mockRepository) SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	if m.softDeleteUniversityScholarshipsByUniversityIDFn == nil {
+		return nil
+	}
+	return m.softDeleteUniversityScholarshipsByUniversityIDFn(ctx, universityID)
+}
+func (m *mockRepository) CreateUniversityScholarship(ctx context.Context, params queries.CreateUniversityScholarshipParams) (queries.UniversityScholarship, error) {
+	if m.createUniversityScholarshipFn == nil {
+		return queries.UniversityScholarship{}, nil
+	}
+	return m.createUniversityScholarshipFn(ctx, params)
 }
 func (m *mockRepository) CreateCourse(ctx context.Context, params queries.CreateCourseParams) (queries.Course, error) {
 	return m.createCourseFn(ctx, params)

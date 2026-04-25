@@ -63,11 +63,21 @@ CREATE TABLE universities (
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('publica', 'privada', 'instituto', 'academia')),
   province TEXT NOT NULL,
+  city TEXT,
+  country TEXT NOT NULL DEFAULT 'Mozambique',
   description TEXT,
   logo_url TEXT,
+  campus_image_url TEXT,
   website TEXT,
   email TEXT,
   phone TEXT,
+  founded_year INTEGER CHECK (founded_year IS NULL OR founded_year > 0),
+  address TEXT,
+  map_url TEXT,
+  academic_calendar TEXT,
+  student_count INTEGER CHECK (student_count IS NULL OR student_count >= 0),
+  admissions_deadline DATE,
+  tags TEXT[] NOT NULL DEFAULT '{}',
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   verified_at TIMESTAMPTZ,
   created_by UUID REFERENCES users(id),
@@ -82,6 +92,37 @@ CREATE INDEX universities_province_idx ON universities (province) WHERE deleted_
 CREATE INDEX universities_type_idx ON universities (type) WHERE deleted_at IS NULL;
 CREATE INDEX universities_verified_idx ON universities (verified) WHERE deleted_at IS NULL;
 CREATE INDEX universities_deleted_at_idx ON universities (deleted_at);
+
+CREATE TABLE university_fees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  university_id UUID NOT NULL REFERENCES universities(id),
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX university_fees_university_id_idx ON university_fees (university_id) WHERE deleted_at IS NULL;
+CREATE INDEX university_fees_sort_order_idx ON university_fees (sort_order) WHERE deleted_at IS NULL;
+CREATE INDEX university_fees_deleted_at_idx ON university_fees (deleted_at);
+
+CREATE TABLE university_scholarships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  university_id UUID NOT NULL REFERENCES universities(id),
+  name TEXT NOT NULL,
+  amount TEXT,
+  status TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX university_scholarships_university_id_idx ON university_scholarships (university_id) WHERE deleted_at IS NULL;
+CREATE INDEX university_scholarships_sort_order_idx ON university_scholarships (sort_order) WHERE deleted_at IS NULL;
+CREATE INDEX university_scholarships_deleted_at_idx ON university_scholarships (deleted_at);
 
 CREATE TABLE courses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -116,9 +157,22 @@ CREATE TABLE opportunities (
   requirements TEXT,
   deadline TIMESTAMPTZ,
   apply_url TEXT,
+  external_url_label TEXT,
   country TEXT NOT NULL,
+  location TEXT,
+  is_remote BOOLEAN NOT NULL DEFAULT FALSE,
   language TEXT,
   area TEXT,
+  hero_image_url TEXT,
+  provider_logo_url TEXT,
+  amount_min NUMERIC(12,2) CHECK (amount_min IS NULL OR amount_min >= 0),
+  amount_max NUMERIC(12,2) CHECK (amount_max IS NULL OR amount_max >= 0),
+  amount_currency TEXT NOT NULL DEFAULT 'MZN',
+  coverage TEXT[] NOT NULL DEFAULT '{}',
+  eligibility TEXT,
+  application_process TEXT,
+  degree_level TEXT,
+  program_area TEXT,
   is_active BOOLEAN NOT NULL DEFAULT FALSE,
   published_by UUID REFERENCES users(id),
   verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -239,6 +293,16 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER universities_set_updated_at
 BEFORE UPDATE ON universities
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER university_fees_set_updated_at
+BEFORE UPDATE ON university_fees
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER university_scholarships_set_updated_at
+BEFORE UPDATE ON university_scholarships
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 

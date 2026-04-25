@@ -47,9 +47,22 @@ INSERT INTO opportunities (
   requirements,
   deadline,
   apply_url,
+  external_url_label,
   country,
+  location,
+  is_remote,
   language,
   area,
+  hero_image_url,
+  provider_logo_url,
+  amount_min,
+  amount_max,
+  amount_currency,
+  coverage,
+  eligibility,
+  application_process,
+  degree_level,
+  program_area,
   is_active,
   published_by,
   verified
@@ -67,26 +80,52 @@ INSERT INTO opportunities (
   $11,
   $12,
   $13,
-  $14
+  $14,
+  $15,
+  $16,
+  $17,
+  $18,
+  $19,
+  $20,
+  $21,
+  $22,
+  $23,
+  $24,
+  $25,
+  $26,
+  $27
 )
-RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 `
 
 type CreateOpportunityParams struct {
-	Slug         string             `json:"slug"`
-	Title        string             `json:"title"`
-	Type         string             `json:"type"`
-	EntityName   string             `json:"entity_name"`
-	Description  string             `json:"description"`
-	Requirements pgtype.Text        `json:"requirements"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	ApplyUrl     pgtype.Text        `json:"apply_url"`
-	Country      string             `json:"country"`
-	Language     pgtype.Text        `json:"language"`
-	Area         pgtype.Text        `json:"area"`
-	IsActive     bool               `json:"is_active"`
-	PublishedBy  pgtype.UUID        `json:"published_by"`
-	Verified     bool               `json:"verified"`
+	Slug               string             `json:"slug"`
+	Title              string             `json:"title"`
+	Type               string             `json:"type"`
+	EntityName         string             `json:"entity_name"`
+	Description        string             `json:"description"`
+	Requirements       pgtype.Text        `json:"requirements"`
+	Deadline           pgtype.Timestamptz `json:"deadline"`
+	ApplyUrl           pgtype.Text        `json:"apply_url"`
+	ExternalUrlLabel   pgtype.Text        `json:"external_url_label"`
+	Country            string             `json:"country"`
+	Location           pgtype.Text        `json:"location"`
+	IsRemote           bool               `json:"is_remote"`
+	Language           pgtype.Text        `json:"language"`
+	Area               pgtype.Text        `json:"area"`
+	HeroImageUrl       pgtype.Text        `json:"hero_image_url"`
+	ProviderLogoUrl    pgtype.Text        `json:"provider_logo_url"`
+	AmountMin          pgtype.Numeric     `json:"amount_min"`
+	AmountMax          pgtype.Numeric     `json:"amount_max"`
+	AmountCurrency     string             `json:"amount_currency"`
+	Coverage           []string           `json:"coverage"`
+	Eligibility        pgtype.Text        `json:"eligibility"`
+	ApplicationProcess pgtype.Text        `json:"application_process"`
+	DegreeLevel        pgtype.Text        `json:"degree_level"`
+	ProgramArea        pgtype.Text        `json:"program_area"`
+	IsActive           bool               `json:"is_active"`
+	PublishedBy        pgtype.UUID        `json:"published_by"`
+	Verified           bool               `json:"verified"`
 }
 
 func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error) {
@@ -99,9 +138,22 @@ func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityPa
 		arg.Requirements,
 		arg.Deadline,
 		arg.ApplyUrl,
+		arg.ExternalUrlLabel,
 		arg.Country,
+		arg.Location,
+		arg.IsRemote,
 		arg.Language,
 		arg.Area,
+		arg.HeroImageUrl,
+		arg.ProviderLogoUrl,
+		arg.AmountMin,
+		arg.AmountMax,
+		arg.AmountCurrency,
+		arg.Coverage,
+		arg.Eligibility,
+		arg.ApplicationProcess,
+		arg.DegreeLevel,
+		arg.ProgramArea,
 		arg.IsActive,
 		arg.PublishedBy,
 		arg.Verified,
@@ -117,9 +169,22 @@ func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityPa
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -136,7 +201,7 @@ SET
   is_active = FALSE
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
@@ -152,9 +217,22 @@ func (q *Queries) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Op
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -166,7 +244,7 @@ func (q *Queries) DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Op
 }
 
 const getOpportunityByID = `-- name: GetOpportunityByID :one
-SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 FROM opportunities
 WHERE id = $1
   AND deleted_at IS NULL
@@ -185,9 +263,22 @@ func (q *Queries) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (Oppor
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -199,7 +290,7 @@ func (q *Queries) GetOpportunityByID(ctx context.Context, id pgtype.UUID) (Oppor
 }
 
 const getOpportunityBySlug = `-- name: GetOpportunityBySlug :one
-SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 FROM opportunities
 WHERE slug = $1
   AND deleted_at IS NULL
@@ -218,9 +309,22 @@ func (q *Queries) GetOpportunityBySlug(ctx context.Context, slug string) (Opport
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -232,7 +336,7 @@ func (q *Queries) GetOpportunityBySlug(ctx context.Context, slug string) (Opport
 }
 
 const listCMSOpportunities = `-- name: ListCMSOpportunities :many
-SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 FROM opportunities
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -263,9 +367,22 @@ func (q *Queries) ListCMSOpportunities(ctx context.Context, arg ListCMSOpportuni
 			&i.Requirements,
 			&i.Deadline,
 			&i.ApplyUrl,
+			&i.ExternalUrlLabel,
 			&i.Country,
+			&i.Location,
+			&i.IsRemote,
 			&i.Language,
 			&i.Area,
+			&i.HeroImageUrl,
+			&i.ProviderLogoUrl,
+			&i.AmountMin,
+			&i.AmountMax,
+			&i.AmountCurrency,
+			&i.Coverage,
+			&i.Eligibility,
+			&i.ApplicationProcess,
+			&i.DegreeLevel,
+			&i.ProgramArea,
 			&i.IsActive,
 			&i.PublishedBy,
 			&i.Verified,
@@ -284,7 +401,7 @@ func (q *Queries) ListCMSOpportunities(ctx context.Context, arg ListCMSOpportuni
 }
 
 const listOpportunities = `-- name: ListOpportunities :many
-SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 FROM opportunities
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -315,9 +432,22 @@ func (q *Queries) ListOpportunities(ctx context.Context, arg ListOpportunitiesPa
 			&i.Requirements,
 			&i.Deadline,
 			&i.ApplyUrl,
+			&i.ExternalUrlLabel,
 			&i.Country,
+			&i.Location,
+			&i.IsRemote,
 			&i.Language,
 			&i.Area,
+			&i.HeroImageUrl,
+			&i.ProviderLogoUrl,
+			&i.AmountMin,
+			&i.AmountMax,
+			&i.AmountCurrency,
+			&i.Coverage,
+			&i.Eligibility,
+			&i.ApplicationProcess,
+			&i.DegreeLevel,
+			&i.ProgramArea,
 			&i.IsActive,
 			&i.PublishedBy,
 			&i.Verified,
@@ -342,7 +472,7 @@ SET
   is_active = FALSE
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
@@ -358,9 +488,22 @@ func (q *Queries) RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opport
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -381,26 +524,52 @@ SET
   requirements = $6,
   deadline = $7,
   apply_url = $8,
-  country = $9,
-  language = $10,
-  area = $11
+  external_url_label = $9,
+  country = $10,
+  location = $11,
+  is_remote = $12,
+  language = $13,
+  area = $14,
+  hero_image_url = $15,
+  provider_logo_url = $16,
+  amount_min = $17,
+  amount_max = $18,
+  amount_currency = $19,
+  coverage = $20,
+  eligibility = $21,
+  application_process = $22,
+  degree_level = $23,
+  program_area = $24
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 `
 
 type UpdateOpportunityParams struct {
-	ID           pgtype.UUID        `json:"id"`
-	Title        string             `json:"title"`
-	Type         string             `json:"type"`
-	EntityName   string             `json:"entity_name"`
-	Description  string             `json:"description"`
-	Requirements pgtype.Text        `json:"requirements"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	ApplyUrl     pgtype.Text        `json:"apply_url"`
-	Country      string             `json:"country"`
-	Language     pgtype.Text        `json:"language"`
-	Area         pgtype.Text        `json:"area"`
+	ID                 pgtype.UUID        `json:"id"`
+	Title              string             `json:"title"`
+	Type               string             `json:"type"`
+	EntityName         string             `json:"entity_name"`
+	Description        string             `json:"description"`
+	Requirements       pgtype.Text        `json:"requirements"`
+	Deadline           pgtype.Timestamptz `json:"deadline"`
+	ApplyUrl           pgtype.Text        `json:"apply_url"`
+	ExternalUrlLabel   pgtype.Text        `json:"external_url_label"`
+	Country            string             `json:"country"`
+	Location           pgtype.Text        `json:"location"`
+	IsRemote           bool               `json:"is_remote"`
+	Language           pgtype.Text        `json:"language"`
+	Area               pgtype.Text        `json:"area"`
+	HeroImageUrl       pgtype.Text        `json:"hero_image_url"`
+	ProviderLogoUrl    pgtype.Text        `json:"provider_logo_url"`
+	AmountMin          pgtype.Numeric     `json:"amount_min"`
+	AmountMax          pgtype.Numeric     `json:"amount_max"`
+	AmountCurrency     string             `json:"amount_currency"`
+	Coverage           []string           `json:"coverage"`
+	Eligibility        pgtype.Text        `json:"eligibility"`
+	ApplicationProcess pgtype.Text        `json:"application_process"`
+	DegreeLevel        pgtype.Text        `json:"degree_level"`
+	ProgramArea        pgtype.Text        `json:"program_area"`
 }
 
 func (q *Queries) UpdateOpportunity(ctx context.Context, arg UpdateOpportunityParams) (Opportunity, error) {
@@ -413,9 +582,22 @@ func (q *Queries) UpdateOpportunity(ctx context.Context, arg UpdateOpportunityPa
 		arg.Requirements,
 		arg.Deadline,
 		arg.ApplyUrl,
+		arg.ExternalUrlLabel,
 		arg.Country,
+		arg.Location,
+		arg.IsRemote,
 		arg.Language,
 		arg.Area,
+		arg.HeroImageUrl,
+		arg.ProviderLogoUrl,
+		arg.AmountMin,
+		arg.AmountMax,
+		arg.AmountCurrency,
+		arg.Coverage,
+		arg.Eligibility,
+		arg.ApplicationProcess,
+		arg.DegreeLevel,
+		arg.ProgramArea,
 	)
 	var i Opportunity
 	err := row.Scan(
@@ -428,9 +610,22 @@ func (q *Queries) UpdateOpportunity(ctx context.Context, arg UpdateOpportunityPa
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,
@@ -448,7 +643,7 @@ SET
   is_active = TRUE
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, country, language, area, is_active, published_by, verified, created_at, updated_at, deleted_at
+RETURNING id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error) {
@@ -464,9 +659,22 @@ func (q *Queries) VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opport
 		&i.Requirements,
 		&i.Deadline,
 		&i.ApplyUrl,
+		&i.ExternalUrlLabel,
 		&i.Country,
+		&i.Location,
+		&i.IsRemote,
 		&i.Language,
 		&i.Area,
+		&i.HeroImageUrl,
+		&i.ProviderLogoUrl,
+		&i.AmountMin,
+		&i.AmountMax,
+		&i.AmountCurrency,
+		&i.Coverage,
+		&i.Eligibility,
+		&i.ApplicationProcess,
+		&i.DegreeLevel,
+		&i.ProgramArea,
 		&i.IsActive,
 		&i.PublishedBy,
 		&i.Verified,

@@ -23,6 +23,12 @@ type Repository interface {
 	CountCMSUniversities(ctx context.Context, actor Actor, filters UniversityListFilters) (int64, error)
 	GetUniversityByID(ctx context.Context, id pgtype.UUID) (queries.University, error)
 	UpdateUniversity(ctx context.Context, params queries.UpdateUniversityParams) (queries.University, error)
+	ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityFee, error)
+	SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error
+	CreateUniversityFee(ctx context.Context, params queries.CreateUniversityFeeParams) (queries.UniversityFee, error)
+	ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityScholarship, error)
+	SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error
+	CreateUniversityScholarship(ctx context.Context, params queries.CreateUniversityScholarshipParams) (queries.UniversityScholarship, error)
 	CreateCourse(ctx context.Context, params queries.CreateCourseParams) (queries.Course, error)
 	ListCMSCourses(ctx context.Context, params queries.ListCMSCoursesParams, actor Actor, filters CourseListFilters) ([]queries.Course, error)
 	CountCMSCourses(ctx context.Context, actor Actor, filters CourseListFilters) (int64, error)

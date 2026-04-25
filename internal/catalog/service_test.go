@@ -11,12 +11,15 @@ import (
 )
 
 type mockRepository struct {
-	listUniversitiesFn    func(context.Context, queries.ListUniversitiesParams, UniversityFilters) ([]queries.University, error)
-	countUniversitiesFn   func(context.Context, UniversityFilters) (int64, error)
-	getUniversityBySlugFn func(context.Context, string) (queries.University, error)
-	listCoursesFn         func(context.Context, queries.ListCoursesParams, CourseFilters) ([]queries.Course, error)
-	countCoursesFn        func(context.Context, CourseFilters) (int64, error)
-	getCourseBySlugFn     func(context.Context, string) (queries.Course, error)
+	listUniversitiesFn                         func(context.Context, queries.ListUniversitiesParams, UniversityFilters) ([]queries.University, error)
+	countUniversitiesFn                        func(context.Context, UniversityFilters) (int64, error)
+	getUniversityBySlugFn                      func(context.Context, string) (queries.University, error)
+	listCoursesByUniversityIDFn                func(context.Context, pgtype.UUID) ([]queries.Course, error)
+	listUniversityFeesByUniversityIDFn         func(context.Context, pgtype.UUID) ([]queries.UniversityFee, error)
+	listUniversityScholarshipsByUniversityIDFn func(context.Context, pgtype.UUID) ([]queries.UniversityScholarship, error)
+	listCoursesFn                              func(context.Context, queries.ListCoursesParams, CourseFilters) ([]queries.Course, error)
+	countCoursesFn                             func(context.Context, CourseFilters) (int64, error)
+	getCourseBySlugFn                          func(context.Context, string) (queries.Course, error)
 }
 
 func (m *mockRepository) ListUniversities(ctx context.Context, params queries.ListUniversitiesParams, filters UniversityFilters) ([]queries.University, error) {
@@ -29,6 +32,27 @@ func (m *mockRepository) CountUniversities(ctx context.Context, filters Universi
 
 func (m *mockRepository) GetUniversityBySlug(ctx context.Context, slug string) (queries.University, error) {
 	return m.getUniversityBySlugFn(ctx, slug)
+}
+
+func (m *mockRepository) ListCoursesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.Course, error) {
+	if m.listCoursesByUniversityIDFn == nil {
+		return []queries.Course{}, nil
+	}
+	return m.listCoursesByUniversityIDFn(ctx, universityID)
+}
+
+func (m *mockRepository) ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityFee, error) {
+	if m.listUniversityFeesByUniversityIDFn == nil {
+		return []queries.UniversityFee{}, nil
+	}
+	return m.listUniversityFeesByUniversityIDFn(ctx, universityID)
+}
+
+func (m *mockRepository) ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityScholarship, error) {
+	if m.listUniversityScholarshipsByUniversityIDFn == nil {
+		return []queries.UniversityScholarship{}, nil
+	}
+	return m.listUniversityScholarshipsByUniversityIDFn(ctx, universityID)
 }
 
 func (m *mockRepository) ListCourses(ctx context.Context, params queries.ListCoursesParams, filters CourseFilters) ([]queries.Course, error) {

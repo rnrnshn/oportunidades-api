@@ -42,9 +42,22 @@ func (r *PostgresRepository) ListOpportunities(ctx context.Context, params queri
 			&item.Requirements,
 			&item.Deadline,
 			&item.ApplyUrl,
+			&item.ExternalUrlLabel,
 			&item.Country,
+			&item.Location,
+			&item.IsRemote,
 			&item.Language,
 			&item.Area,
+			&item.HeroImageUrl,
+			&item.ProviderLogoUrl,
+			&item.AmountMin,
+			&item.AmountMax,
+			&item.AmountCurrency,
+			&item.Coverage,
+			&item.Eligibility,
+			&item.ApplicationProcess,
+			&item.DegreeLevel,
+			&item.ProgramArea,
 			&item.IsActive,
 			&item.PublishedBy,
 			&item.Verified,
@@ -85,7 +98,7 @@ func (r *PostgresRepository) GetOpportunityBySlug(ctx context.Context, slug stri
 }
 
 func buildOpportunityListQuery(filters Filters, count bool) (string, []any) {
-	selectClause := `SELECT o.id, o.slug, o.title, o.type, o.entity_name, o.description, o.requirements, o.deadline, o.apply_url, o.country, o.language, o.area, o.is_active, o.published_by, o.verified, o.created_at, o.updated_at, o.deleted_at FROM opportunities o`
+	selectClause := `SELECT o.id, o.slug, o.title, o.type, o.entity_name, o.description, o.requirements, o.deadline, o.apply_url, o.external_url_label, o.country, o.location, o.is_remote, o.language, o.area, o.hero_image_url, o.provider_logo_url, o.amount_min, o.amount_max, o.amount_currency, o.coverage, o.eligibility, o.application_process, o.degree_level, o.program_area, o.is_active, o.published_by, o.verified, o.created_at, o.updated_at, o.deleted_at FROM opportunities o`
 	if count {
 		selectClause = `SELECT COUNT(*) FROM opportunities o`
 	}

@@ -68,6 +68,30 @@ func (r *PostgresRepository) UpdateUniversity(ctx context.Context, params querie
 	return r.queries.UpdateUniversity(ctx, params)
 }
 
+func (r *PostgresRepository) ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityFee, error) {
+	return r.queries.ListUniversityFeesByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	return r.queries.SoftDeleteUniversityFeesByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) CreateUniversityFee(ctx context.Context, params queries.CreateUniversityFeeParams) (queries.UniversityFee, error) {
+	return r.queries.CreateUniversityFee(ctx, params)
+}
+
+func (r *PostgresRepository) ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityScholarship, error) {
+	return r.queries.ListUniversityScholarshipsByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	return r.queries.SoftDeleteUniversityScholarshipsByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) CreateUniversityScholarship(ctx context.Context, params queries.CreateUniversityScholarshipParams) (queries.UniversityScholarship, error) {
+	return r.queries.CreateUniversityScholarship(ctx, params)
+}
+
 func (r *PostgresRepository) CreateCourse(ctx context.Context, params queries.CreateCourseParams) (queries.Course, error) {
 	return r.queries.CreateCourse(ctx, params)
 }

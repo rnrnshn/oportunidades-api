@@ -32,6 +32,8 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateUniversity(ctx context.Context, arg CreateUniversityParams) (University, error)
+	CreateUniversityFee(ctx context.Context, arg CreateUniversityFeeParams) (UniversityFee, error)
+	CreateUniversityScholarship(ctx context.Context, arg CreateUniversityScholarshipParams) (UniversityScholarship, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error)
@@ -56,11 +58,14 @@ type Querier interface {
 	ListCMSOpportunities(ctx context.Context, arg ListCMSOpportunitiesParams) ([]Opportunity, error)
 	ListCMSUniversities(ctx context.Context, arg ListCMSUniversitiesParams) ([]University, error)
 	ListCourses(ctx context.Context, arg ListCoursesParams) ([]Course, error)
+	ListCoursesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]Course, error)
 	ListMentors(ctx context.Context, arg ListMentorsParams) ([]ListMentorsRow, error)
 	ListMentorshipSessionsForUser(ctx context.Context, arg ListMentorshipSessionsForUserParams) ([]MentorshipSession, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
+	ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityFee, error)
+	ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityScholarship, error)
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
@@ -69,6 +74,8 @@ type Querier interface {
 	ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error
+	SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error
 	UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	UpdateArticle(ctx context.Context, arg UpdateArticleParams) (Article, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)

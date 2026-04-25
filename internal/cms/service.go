@@ -112,31 +112,69 @@ type CreateArticleInput struct {
 }
 
 type CreateOpportunityInput struct {
-	ID           string
-	PublishedBy  string
-	Title        string
-	Type         string
-	EntityName   string
-	Description  string
-	Requirements string
-	Deadline     string
-	ApplyURL     string
-	Country      string
-	Language     string
-	Area         string
+	ID                 string
+	PublishedBy        string
+	Title              string
+	Type               string
+	EntityName         string
+	Description        string
+	Requirements       string
+	Deadline           string
+	ApplyURL           string
+	ExternalURLLabel   string
+	Country            string
+	Location           string
+	IsRemote           bool
+	Language           string
+	Area               string
+	HeroImageURL       string
+	ProviderLogoURL    string
+	AmountMin          string
+	AmountMax          string
+	AmountCurrency     string
+	Coverage           []string
+	Eligibility        string
+	ApplicationProcess string
+	DegreeLevel        string
+	ProgramArea        string
 }
 
 type CreateUniversityInput struct {
-	ID          string
-	CreatedBy   string
-	Name        string
-	Type        string
-	Province    string
-	Description string
-	LogoURL     string
-	Website     string
-	Email       string
-	Phone       string
+	ID                 string
+	CreatedBy          string
+	Name               string
+	Type               string
+	Province           string
+	City               string
+	Country            string
+	Description        string
+	LogoURL            string
+	CampusImageURL     string
+	Website            string
+	Email              string
+	Phone              string
+	FoundedYear        int32
+	Address            string
+	MapURL             string
+	AcademicCalendar   string
+	StudentCount       int32
+	AdmissionsDeadline string
+	Tags               []string
+	Fees               []UniversityFeeInput
+	Scholarships       []UniversityScholarshipInput
+}
+
+type UniversityFeeInput struct {
+	Label     string
+	Value     string
+	SortOrder int32
+}
+
+type UniversityScholarshipInput struct {
+	Name      string
+	Amount    string
+	Status    string
+	SortOrder int32
 }
 
 type CreateCourseInput struct {
@@ -187,24 +225,76 @@ type ArticleItem struct {
 }
 
 type OpportunityItem struct {
-	ID          string `json:"id"`
-	Slug        string `json:"slug"`
-	Title       string `json:"title"`
-	Type        string `json:"type"`
-	EntityName  string `json:"entity_name"`
-	Verified    bool   `json:"verified"`
-	IsActive    bool   `json:"is_active"`
-	PublishedBy string `json:"published_by"`
+	ID                 string   `json:"id"`
+	Slug               string   `json:"slug"`
+	Title              string   `json:"title"`
+	Type               string   `json:"type"`
+	EntityName         string   `json:"entity_name"`
+	Description        string   `json:"description,omitempty"`
+	Requirements       string   `json:"requirements,omitempty"`
+	Deadline           string   `json:"deadline,omitempty"`
+	ApplyURL           string   `json:"apply_url,omitempty"`
+	ExternalURLLabel   string   `json:"external_url_label,omitempty"`
+	Country            string   `json:"country,omitempty"`
+	Location           string   `json:"location,omitempty"`
+	IsRemote           bool     `json:"is_remote"`
+	Language           string   `json:"language,omitempty"`
+	Area               string   `json:"area,omitempty"`
+	HeroImageURL       string   `json:"hero_image_url,omitempty"`
+	ProviderLogoURL    string   `json:"provider_logo_url,omitempty"`
+	AmountMin          string   `json:"amount_min,omitempty"`
+	AmountMax          string   `json:"amount_max,omitempty"`
+	AmountCurrency     string   `json:"amount_currency"`
+	Coverage           []string `json:"coverage"`
+	Eligibility        string   `json:"eligibility,omitempty"`
+	ApplicationProcess string   `json:"application_process,omitempty"`
+	DegreeLevel        string   `json:"degree_level,omitempty"`
+	ProgramArea        string   `json:"program_area,omitempty"`
+	Verified           bool     `json:"verified"`
+	IsActive           bool     `json:"is_active"`
+	PublishedBy        string   `json:"published_by"`
 }
 
 type UniversityItem struct {
-	ID        string `json:"id"`
-	Slug      string `json:"slug"`
+	ID                 string                      `json:"id"`
+	Slug               string                      `json:"slug"`
+	Name               string                      `json:"name"`
+	Type               string                      `json:"type"`
+	Province           string                      `json:"province"`
+	City               string                      `json:"city,omitempty"`
+	Country            string                      `json:"country"`
+	Description        string                      `json:"description,omitempty"`
+	LogoURL            string                      `json:"logo_url,omitempty"`
+	CampusImageURL     string                      `json:"campus_image_url,omitempty"`
+	Website            string                      `json:"website,omitempty"`
+	Email              string                      `json:"email,omitempty"`
+	Phone              string                      `json:"phone,omitempty"`
+	FoundedYear        *int32                      `json:"founded_year,omitempty"`
+	Address            string                      `json:"address,omitempty"`
+	MapURL             string                      `json:"map_url,omitempty"`
+	AcademicCalendar   string                      `json:"academic_calendar,omitempty"`
+	StudentCount       *int32                      `json:"student_count,omitempty"`
+	AdmissionsDeadline string                      `json:"admissions_deadline,omitempty"`
+	Tags               []string                    `json:"tags"`
+	Fees               []UniversityFeeItem         `json:"fees,omitempty"`
+	Scholarships       []UniversityScholarshipItem `json:"scholarships,omitempty"`
+	Verified           bool                        `json:"verified"`
+	CreatedBy          string                      `json:"created_by"`
+}
+
+type UniversityFeeItem struct {
+	ID        string `json:"id,omitempty"`
+	Label     string `json:"label"`
+	Value     string `json:"value"`
+	SortOrder int32  `json:"sort_order"`
+}
+
+type UniversityScholarshipItem struct {
+	ID        string `json:"id,omitempty"`
 	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Province  string `json:"province"`
-	Verified  bool   `json:"verified"`
-	CreatedBy string `json:"created_by"`
+	Amount    string `json:"amount,omitempty"`
+	Status    string `json:"status"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 type CourseItem struct {
@@ -393,7 +483,7 @@ func (s *Service) GetUniversity(ctx context.Context, actor Actor, id string) (*U
 	if !canManageUniversity(actor, item) {
 		return nil, ErrForbidden
 	}
-	mapped, err := mapUniversity(item)
+	mapped, err := s.mapUniversityWithRelations(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -409,23 +499,36 @@ func (s *Service) CreateUniversity(ctx context.Context, actor Actor, input Creat
 		return nil, fmt.Errorf("cms: university required fields are missing")
 	}
 	item, err := s.repo.CreateUniversity(ctx, queries.CreateUniversityParams{
-		Slug:        slugify(input.Name),
-		Name:        strings.TrimSpace(input.Name),
-		Type:        strings.TrimSpace(input.Type),
-		Province:    strings.TrimSpace(input.Province),
-		Description: textToPg(input.Description),
-		LogoUrl:     textToPg(input.LogoURL),
-		Website:     textToPg(input.Website),
-		Email:       textToPg(input.Email),
-		Phone:       textToPg(input.Phone),
-		Verified:    false,
-		VerifiedAt:  pgtype.Timestamptz{},
-		CreatedBy:   uuidToPg(createdBy),
+		Slug:               slugify(input.Name),
+		Name:               strings.TrimSpace(input.Name),
+		Type:               strings.TrimSpace(input.Type),
+		Province:           strings.TrimSpace(input.Province),
+		City:               textToPg(input.City),
+		Country:            countryOrDefault(input.Country),
+		Description:        textToPg(input.Description),
+		LogoUrl:            textToPg(input.LogoURL),
+		CampusImageUrl:     textToPg(input.CampusImageURL),
+		Website:            textToPg(input.Website),
+		Email:              textToPg(input.Email),
+		Phone:              textToPg(input.Phone),
+		FoundedYear:        chooseInt4(input.FoundedYear, input.FoundedYear > 0),
+		Address:            textToPg(input.Address),
+		MapUrl:             textToPg(input.MapURL),
+		AcademicCalendar:   textToPg(input.AcademicCalendar),
+		StudentCount:       chooseInt4(input.StudentCount, input.StudentCount >= 0 && input.StudentCount != 0),
+		AdmissionsDeadline: dateToPg(input.AdmissionsDeadline),
+		Tags:               normalizeTags(input.Tags),
+		Verified:           false,
+		VerifiedAt:         pgtype.Timestamptz{},
+		CreatedBy:          uuidToPg(createdBy),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: create university: %w", err)
 	}
-	mapped, err := mapUniversity(item)
+	if err := s.replaceUniversityRelations(ctx, item.ID, input); err != nil {
+		return nil, err
+	}
+	mapped, err := s.mapUniversityWithRelations(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -447,28 +550,82 @@ func (s *Service) UpdateUniversity(ctx context.Context, actor Actor, input Creat
 	name := chooseString(input.Name, existing.Name)
 	typeValue := chooseString(input.Type, existing.Type)
 	province := chooseString(input.Province, existing.Province)
+	country := chooseString(input.Country, existing.Country)
 	if name == "" || typeValue == "" || province == "" {
 		return nil, fmt.Errorf("cms: university required fields are missing")
 	}
 	item, err := s.repo.UpdateUniversity(ctx, queries.UpdateUniversityParams{
-		ID:          uuidToPg(universityID),
-		Name:        name,
-		Type:        typeValue,
-		Province:    province,
-		Description: chooseText(input.Description, existing.Description),
-		LogoUrl:     chooseText(input.LogoURL, existing.LogoUrl),
-		Website:     chooseText(input.Website, existing.Website),
-		Email:       chooseText(input.Email, existing.Email),
-		Phone:       chooseText(input.Phone, existing.Phone),
+		ID:                 uuidToPg(universityID),
+		Name:               name,
+		Type:               typeValue,
+		Province:           province,
+		City:               chooseText(input.City, existing.City),
+		Country:            countryOrDefault(country),
+		Description:        chooseText(input.Description, existing.Description),
+		LogoUrl:            chooseText(input.LogoURL, existing.LogoUrl),
+		CampusImageUrl:     chooseText(input.CampusImageURL, existing.CampusImageUrl),
+		Website:            chooseText(input.Website, existing.Website),
+		Email:              chooseText(input.Email, existing.Email),
+		Phone:              chooseText(input.Phone, existing.Phone),
+		FoundedYear:        chooseInt4WithFallback(input.FoundedYear, existing.FoundedYear),
+		Address:            chooseText(input.Address, existing.Address),
+		MapUrl:             chooseText(input.MapURL, existing.MapUrl),
+		AcademicCalendar:   chooseText(input.AcademicCalendar, existing.AcademicCalendar),
+		StudentCount:       chooseInt4WithFallback(input.StudentCount, existing.StudentCount),
+		AdmissionsDeadline: chooseDate(input.AdmissionsDeadline, existing.AdmissionsDeadline),
+		Tags:               chooseTags(input.Tags, existing.Tags),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: update university: %w", err)
 	}
-	mapped, err := mapUniversity(item)
+	if err := s.replaceUniversityRelations(ctx, item.ID, input); err != nil {
+		return nil, err
+	}
+	mapped, err := s.mapUniversityWithRelations(ctx, item)
 	if err != nil {
 		return nil, err
 	}
 	return &UniversityResult{Data: mapped}, nil
+}
+
+func (s *Service) replaceUniversityRelations(ctx context.Context, universityID pgtype.UUID, input CreateUniversityInput) error {
+	if input.Fees != nil {
+		if err := s.repo.SoftDeleteUniversityFeesByUniversityID(ctx, universityID); err != nil {
+			return fmt.Errorf("cms: delete university fees: %w", err)
+		}
+		for index, fee := range input.Fees {
+			if strings.TrimSpace(fee.Label) == "" || strings.TrimSpace(fee.Value) == "" {
+				continue
+			}
+			sortOrder := fee.SortOrder
+			if sortOrder == 0 {
+				sortOrder = int32(index)
+			}
+			if _, err := s.repo.CreateUniversityFee(ctx, queries.CreateUniversityFeeParams{UniversityID: universityID, Label: strings.TrimSpace(fee.Label), Value: strings.TrimSpace(fee.Value), SortOrder: sortOrder}); err != nil {
+				return fmt.Errorf("cms: create university fee: %w", err)
+			}
+		}
+	}
+
+	if input.Scholarships != nil {
+		if err := s.repo.SoftDeleteUniversityScholarshipsByUniversityID(ctx, universityID); err != nil {
+			return fmt.Errorf("cms: delete university scholarships: %w", err)
+		}
+		for index, scholarship := range input.Scholarships {
+			if strings.TrimSpace(scholarship.Name) == "" || strings.TrimSpace(scholarship.Status) == "" {
+				continue
+			}
+			sortOrder := scholarship.SortOrder
+			if sortOrder == 0 {
+				sortOrder = int32(index)
+			}
+			if _, err := s.repo.CreateUniversityScholarship(ctx, queries.CreateUniversityScholarshipParams{UniversityID: universityID, Name: strings.TrimSpace(scholarship.Name), Amount: textToPg(scholarship.Amount), Status: strings.TrimSpace(scholarship.Status), SortOrder: sortOrder}); err != nil {
+				return fmt.Errorf("cms: create university scholarship: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) ListCourses(ctx context.Context, actor Actor, params PaginationParams, filters CourseListFilters) (*CoursesResult, error) {
@@ -699,20 +856,33 @@ func (s *Service) CreateOpportunity(ctx context.Context, actor Actor, input Crea
 		deadline = pgtype.Timestamptz{Time: parsedTime, Valid: true}
 	}
 	opportunity, err := s.repo.CreateOpportunity(ctx, queries.CreateOpportunityParams{
-		Slug:         slugify(input.Title),
-		Title:        strings.TrimSpace(input.Title),
-		Type:         strings.TrimSpace(input.Type),
-		EntityName:   strings.TrimSpace(input.EntityName),
-		Description:  strings.TrimSpace(input.Description),
-		Requirements: textToPg(input.Requirements),
-		Deadline:     deadline,
-		ApplyUrl:     textToPg(input.ApplyURL),
-		Country:      strings.TrimSpace(input.Country),
-		Language:     textToPg(input.Language),
-		Area:         textToPg(input.Area),
-		IsActive:     false,
-		PublishedBy:  uuidToPg(publishedBy),
-		Verified:     false,
+		Slug:               slugify(input.Title),
+		Title:              strings.TrimSpace(input.Title),
+		Type:               strings.TrimSpace(input.Type),
+		EntityName:         strings.TrimSpace(input.EntityName),
+		Description:        strings.TrimSpace(input.Description),
+		Requirements:       textToPg(input.Requirements),
+		Deadline:           deadline,
+		ApplyUrl:           textToPg(input.ApplyURL),
+		ExternalUrlLabel:   textToPg(input.ExternalURLLabel),
+		Country:            strings.TrimSpace(input.Country),
+		Location:           textToPg(input.Location),
+		IsRemote:           input.IsRemote,
+		Language:           textToPg(input.Language),
+		Area:               textToPg(input.Area),
+		HeroImageUrl:       textToPg(input.HeroImageURL),
+		ProviderLogoUrl:    textToPg(input.ProviderLogoURL),
+		AmountMin:          numericToPg(input.AmountMin),
+		AmountMax:          numericToPg(input.AmountMax),
+		AmountCurrency:     currencyOrDefault(input.AmountCurrency),
+		Coverage:           normalizeTags(input.Coverage),
+		Eligibility:        textToPg(input.Eligibility),
+		ApplicationProcess: textToPg(input.ApplicationProcess),
+		DegreeLevel:        textToPg(input.DegreeLevel),
+		ProgramArea:        textToPg(input.ProgramArea),
+		IsActive:           false,
+		PublishedBy:        uuidToPg(publishedBy),
+		Verified:           false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: create opportunity: %w", err)
@@ -753,17 +923,30 @@ func (s *Service) UpdateOpportunity(ctx context.Context, actor Actor, input Crea
 		deadline = pgtype.Timestamptz{Time: parsedTime, Valid: true}
 	}
 	updatedOpportunity, err := s.repo.UpdateOpportunity(ctx, queries.UpdateOpportunityParams{
-		ID:           uuidToPg(opportunityID),
-		Title:        title,
-		Type:         opportunityType,
-		EntityName:   entityName,
-		Description:  description,
-		Requirements: chooseText(input.Requirements, existingOpportunity.Requirements),
-		Deadline:     deadline,
-		ApplyUrl:     chooseText(input.ApplyURL, existingOpportunity.ApplyUrl),
-		Country:      country,
-		Language:     chooseText(input.Language, existingOpportunity.Language),
-		Area:         chooseText(input.Area, existingOpportunity.Area),
+		ID:                 uuidToPg(opportunityID),
+		Title:              title,
+		Type:               opportunityType,
+		EntityName:         entityName,
+		Description:        description,
+		Requirements:       chooseText(input.Requirements, existingOpportunity.Requirements),
+		Deadline:           deadline,
+		ApplyUrl:           chooseText(input.ApplyURL, existingOpportunity.ApplyUrl),
+		ExternalUrlLabel:   chooseText(input.ExternalURLLabel, existingOpportunity.ExternalUrlLabel),
+		Country:            country,
+		Location:           chooseText(input.Location, existingOpportunity.Location),
+		IsRemote:           input.IsRemote,
+		Language:           chooseText(input.Language, existingOpportunity.Language),
+		Area:               chooseText(input.Area, existingOpportunity.Area),
+		HeroImageUrl:       chooseText(input.HeroImageURL, existingOpportunity.HeroImageUrl),
+		ProviderLogoUrl:    chooseText(input.ProviderLogoURL, existingOpportunity.ProviderLogoUrl),
+		AmountMin:          chooseNumeric(input.AmountMin, existingOpportunity.AmountMin),
+		AmountMax:          chooseNumeric(input.AmountMax, existingOpportunity.AmountMax),
+		AmountCurrency:     currencyOrDefault(chooseString(input.AmountCurrency, existingOpportunity.AmountCurrency)),
+		Coverage:           chooseTags(input.Coverage, existingOpportunity.Coverage),
+		Eligibility:        chooseText(input.Eligibility, existingOpportunity.Eligibility),
+		ApplicationProcess: chooseText(input.ApplicationProcess, existingOpportunity.ApplicationProcess),
+		DegreeLevel:        chooseText(input.DegreeLevel, existingOpportunity.DegreeLevel),
+		ProgramArea:        chooseText(input.ProgramArea, existingOpportunity.ProgramArea),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: update opportunity: %w", err)
@@ -813,7 +996,36 @@ func mapOpportunity(opportunity queries.Opportunity) (OpportunityItem, error) {
 	if err != nil {
 		return OpportunityItem{}, fmt.Errorf("cms: opportunity publisher id: %w", err)
 	}
-	return OpportunityItem{ID: id.String(), Slug: opportunity.Slug, Title: opportunity.Title, Type: opportunity.Type, EntityName: opportunity.EntityName, Verified: opportunity.Verified, IsActive: opportunity.IsActive, PublishedBy: publishedBy.String()}, nil
+	return OpportunityItem{
+		ID:                 id.String(),
+		Slug:               opportunity.Slug,
+		Title:              opportunity.Title,
+		Type:               opportunity.Type,
+		EntityName:         opportunity.EntityName,
+		Description:        opportunity.Description,
+		Requirements:       textValue(opportunity.Requirements),
+		Deadline:           timestamptzValue(opportunity.Deadline),
+		ApplyURL:           textValue(opportunity.ApplyUrl),
+		ExternalURLLabel:   textValue(opportunity.ExternalUrlLabel),
+		Country:            opportunity.Country,
+		Location:           textValue(opportunity.Location),
+		IsRemote:           opportunity.IsRemote,
+		Language:           textValue(opportunity.Language),
+		Area:               textValue(opportunity.Area),
+		HeroImageURL:       textValue(opportunity.HeroImageUrl),
+		ProviderLogoURL:    textValue(opportunity.ProviderLogoUrl),
+		AmountMin:          numericValue(opportunity.AmountMin),
+		AmountMax:          numericValue(opportunity.AmountMax),
+		AmountCurrency:     opportunity.AmountCurrency,
+		Coverage:           opportunity.Coverage,
+		Eligibility:        textValue(opportunity.Eligibility),
+		ApplicationProcess: textValue(opportunity.ApplicationProcess),
+		DegreeLevel:        textValue(opportunity.DegreeLevel),
+		ProgramArea:        textValue(opportunity.ProgramArea),
+		Verified:           opportunity.Verified,
+		IsActive:           opportunity.IsActive,
+		PublishedBy:        publishedBy.String(),
+	}, nil
 }
 
 func mapUniversity(university queries.University) (UniversityItem, error) {
@@ -825,7 +1037,81 @@ func mapUniversity(university queries.University) (UniversityItem, error) {
 	if err != nil {
 		return UniversityItem{}, fmt.Errorf("cms: university creator id: %w", err)
 	}
-	return UniversityItem{ID: id.String(), Slug: university.Slug, Name: university.Name, Type: university.Type, Province: university.Province, Verified: university.Verified, CreatedBy: createdBy.String()}, nil
+	return UniversityItem{
+		ID:                 id.String(),
+		Slug:               university.Slug,
+		Name:               university.Name,
+		Type:               university.Type,
+		Province:           university.Province,
+		City:               textValue(university.City),
+		Country:            university.Country,
+		Description:        textValue(university.Description),
+		LogoURL:            textValue(university.LogoUrl),
+		CampusImageURL:     textValue(university.CampusImageUrl),
+		Website:            textValue(university.Website),
+		Email:              textValue(university.Email),
+		Phone:              textValue(university.Phone),
+		FoundedYear:        int4Pointer(university.FoundedYear),
+		Address:            textValue(university.Address),
+		MapURL:             textValue(university.MapUrl),
+		AcademicCalendar:   textValue(university.AcademicCalendar),
+		StudentCount:       int4Pointer(university.StudentCount),
+		AdmissionsDeadline: dateValue(university.AdmissionsDeadline),
+		Tags:               university.Tags,
+		Verified:           university.Verified,
+		CreatedBy:          createdBy.String(),
+	}, nil
+}
+
+func (s *Service) mapUniversityWithRelations(ctx context.Context, university queries.University) (UniversityItem, error) {
+	item, err := mapUniversity(university)
+	if err != nil {
+		return UniversityItem{}, err
+	}
+
+	fees, err := s.repo.ListUniversityFeesByUniversityID(ctx, university.ID)
+	if err != nil {
+		return UniversityItem{}, fmt.Errorf("cms: list university fees: %w", err)
+	}
+	item.Fees = make([]UniversityFeeItem, 0, len(fees))
+	for _, fee := range fees {
+		mappedFee, err := mapUniversityFee(fee)
+		if err != nil {
+			return UniversityItem{}, err
+		}
+		item.Fees = append(item.Fees, mappedFee)
+	}
+
+	scholarships, err := s.repo.ListUniversityScholarshipsByUniversityID(ctx, university.ID)
+	if err != nil {
+		return UniversityItem{}, fmt.Errorf("cms: list university scholarships: %w", err)
+	}
+	item.Scholarships = make([]UniversityScholarshipItem, 0, len(scholarships))
+	for _, scholarship := range scholarships {
+		mappedScholarship, err := mapUniversityScholarship(scholarship)
+		if err != nil {
+			return UniversityItem{}, err
+		}
+		item.Scholarships = append(item.Scholarships, mappedScholarship)
+	}
+
+	return item, nil
+}
+
+func mapUniversityFee(fee queries.UniversityFee) (UniversityFeeItem, error) {
+	id, err := uuidFromPg(fee.ID)
+	if err != nil {
+		return UniversityFeeItem{}, fmt.Errorf("cms: university fee id: %w", err)
+	}
+	return UniversityFeeItem{ID: id.String(), Label: fee.Label, Value: fee.Value, SortOrder: fee.SortOrder}, nil
+}
+
+func mapUniversityScholarship(scholarship queries.UniversityScholarship) (UniversityScholarshipItem, error) {
+	id, err := uuidFromPg(scholarship.ID)
+	if err != nil {
+		return UniversityScholarshipItem{}, fmt.Errorf("cms: university scholarship id: %w", err)
+	}
+	return UniversityScholarshipItem{ID: id.String(), Name: scholarship.Name, Amount: textValue(scholarship.Amount), Status: scholarship.Status, SortOrder: scholarship.SortOrder}, nil
 }
 
 func mapCourse(course queries.Course) (CourseItem, error) {
@@ -1222,16 +1508,127 @@ func chooseInt4(value int32, valid bool) pgtype.Int4 {
 	return pgtype.Int4{Int32: value, Valid: true}
 }
 
+func chooseInt4WithFallback(value int32, fallback pgtype.Int4) pgtype.Int4 {
+	if value > 0 {
+		return pgtype.Int4{Int32: value, Valid: true}
+	}
+	return fallback
+}
+
+func int4Pointer(value pgtype.Int4) *int32 {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Int32
+	return &result
+}
+
+func countryOrDefault(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "Mozambique"
+	}
+	return trimmed
+}
+
+func normalizeTags(tags []string) []string {
+	if tags == nil {
+		return []string{}
+	}
+	normalized := make([]string, 0, len(tags))
+	seen := map[string]bool{}
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" || seen[strings.ToLower(trimmed)] {
+			continue
+		}
+		seen[strings.ToLower(trimmed)] = true
+		normalized = append(normalized, trimmed)
+	}
+	return normalized
+}
+
+func chooseTags(input []string, fallback []string) []string {
+	if input == nil {
+		return fallback
+	}
+	return normalizeTags(input)
+}
+
+func dateToPg(value string) pgtype.Date {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return pgtype.Date{}
+	}
+	parsedTime, err := time.Parse("2006-01-02", trimmed)
+	if err != nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: parsedTime, Valid: true}
+}
+
+func chooseDate(input string, fallback pgtype.Date) pgtype.Date {
+	if strings.TrimSpace(input) == "" {
+		return fallback
+	}
+	return dateToPg(input)
+}
+
+func dateValue(value pgtype.Date) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.Time.Format("2006-01-02")
+}
+
 func numericToPg(value string) pgtype.Numeric {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return pgtype.Numeric{}
 	}
-	return pgtype.Numeric{Int: mustParseNumeric(trimmed), Exp: -2, Valid: true}
+	normalized := strings.ReplaceAll(trimmed, ",", ".")
+	parts := strings.SplitN(normalized, ".", 2)
+	digits := parts[0]
+	exp := int32(0)
+	if len(parts) == 2 {
+		digits += parts[1]
+		exp = -int32(len(parts[1]))
+	}
+	return pgtype.Numeric{Int: mustParseNumeric(digits), Exp: exp, Valid: true}
+}
+
+func chooseNumeric(input string, fallback pgtype.Numeric) pgtype.Numeric {
+	if strings.TrimSpace(input) == "" {
+		return fallback
+	}
+	return numericToPg(input)
+}
+
+func numericValue(value pgtype.Numeric) string {
+	if !value.Valid {
+		return ""
+	}
+	encodedValue, err := value.Value()
+	if err != nil || encodedValue == nil {
+		return ""
+	}
+	formattedValue, ok := encodedValue.(string)
+	if !ok {
+		return ""
+	}
+	return formattedValue
+}
+
+func currencyOrDefault(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "MZN"
+	}
+	return strings.ToUpper(trimmed)
 }
 
 func mustParseNumeric(value string) *big.Int {
-	clean := strings.ReplaceAll(strings.TrimSpace(value), ".", "")
+	clean := strings.TrimSpace(value)
 	parsed := new(big.Int)
 	parsed.SetString(clean, 10)
 	return parsed

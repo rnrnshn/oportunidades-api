@@ -137,11 +137,21 @@ INSERT INTO universities (
   name,
   type,
   province,
+  city,
+  country,
   description,
   logo_url,
+  campus_image_url,
   website,
   email,
   phone,
+  founded_year,
+  address,
+  map_url,
+  academic_calendar,
+  student_count,
+  admissions_deadline,
+  tags,
   verified,
   verified_at,
   created_by
@@ -157,24 +167,44 @@ INSERT INTO universities (
   $9,
   $10,
   $11,
-  $12
+  $12,
+  $13,
+  $14,
+  $15,
+  $16,
+  $17,
+  $18,
+  $19,
+  $20,
+  $21,
+  $22
 )
-RETURNING id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+RETURNING id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 `
 
 type CreateUniversityParams struct {
-	Slug        string             `json:"slug"`
-	Name        string             `json:"name"`
-	Type        string             `json:"type"`
-	Province    string             `json:"province"`
-	Description pgtype.Text        `json:"description"`
-	LogoUrl     pgtype.Text        `json:"logo_url"`
-	Website     pgtype.Text        `json:"website"`
-	Email       pgtype.Text        `json:"email"`
-	Phone       pgtype.Text        `json:"phone"`
-	Verified    bool               `json:"verified"`
-	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
-	CreatedBy   pgtype.UUID        `json:"created_by"`
+	Slug               string             `json:"slug"`
+	Name               string             `json:"name"`
+	Type               string             `json:"type"`
+	Province           string             `json:"province"`
+	City               pgtype.Text        `json:"city"`
+	Country            string             `json:"country"`
+	Description        pgtype.Text        `json:"description"`
+	LogoUrl            pgtype.Text        `json:"logo_url"`
+	CampusImageUrl     pgtype.Text        `json:"campus_image_url"`
+	Website            pgtype.Text        `json:"website"`
+	Email              pgtype.Text        `json:"email"`
+	Phone              pgtype.Text        `json:"phone"`
+	FoundedYear        pgtype.Int4        `json:"founded_year"`
+	Address            pgtype.Text        `json:"address"`
+	MapUrl             pgtype.Text        `json:"map_url"`
+	AcademicCalendar   pgtype.Text        `json:"academic_calendar"`
+	StudentCount       pgtype.Int4        `json:"student_count"`
+	AdmissionsDeadline pgtype.Date        `json:"admissions_deadline"`
+	Tags               []string           `json:"tags"`
+	Verified           bool               `json:"verified"`
+	VerifiedAt         pgtype.Timestamptz `json:"verified_at"`
+	CreatedBy          pgtype.UUID        `json:"created_by"`
 }
 
 func (q *Queries) CreateUniversity(ctx context.Context, arg CreateUniversityParams) (University, error) {
@@ -183,11 +213,21 @@ func (q *Queries) CreateUniversity(ctx context.Context, arg CreateUniversityPara
 		arg.Name,
 		arg.Type,
 		arg.Province,
+		arg.City,
+		arg.Country,
 		arg.Description,
 		arg.LogoUrl,
+		arg.CampusImageUrl,
 		arg.Website,
 		arg.Email,
 		arg.Phone,
+		arg.FoundedYear,
+		arg.Address,
+		arg.MapUrl,
+		arg.AcademicCalendar,
+		arg.StudentCount,
+		arg.AdmissionsDeadline,
+		arg.Tags,
 		arg.Verified,
 		arg.VerifiedAt,
 		arg.CreatedBy,
@@ -199,14 +239,115 @@ func (q *Queries) CreateUniversity(ctx context.Context, arg CreateUniversityPara
 		&i.Name,
 		&i.Type,
 		&i.Province,
+		&i.City,
+		&i.Country,
 		&i.Description,
 		&i.LogoUrl,
+		&i.CampusImageUrl,
 		&i.Website,
 		&i.Email,
 		&i.Phone,
+		&i.FoundedYear,
+		&i.Address,
+		&i.MapUrl,
+		&i.AcademicCalendar,
+		&i.StudentCount,
+		&i.AdmissionsDeadline,
+		&i.Tags,
 		&i.Verified,
 		&i.VerifiedAt,
 		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createUniversityFee = `-- name: CreateUniversityFee :one
+INSERT INTO university_fees (
+  university_id,
+  label,
+  value,
+  sort_order
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4
+)
+RETURNING id, university_id, label, value, sort_order, created_at, updated_at, deleted_at
+`
+
+type CreateUniversityFeeParams struct {
+	UniversityID pgtype.UUID `json:"university_id"`
+	Label        string      `json:"label"`
+	Value        string      `json:"value"`
+	SortOrder    int32       `json:"sort_order"`
+}
+
+func (q *Queries) CreateUniversityFee(ctx context.Context, arg CreateUniversityFeeParams) (UniversityFee, error) {
+	row := q.db.QueryRow(ctx, createUniversityFee,
+		arg.UniversityID,
+		arg.Label,
+		arg.Value,
+		arg.SortOrder,
+	)
+	var i UniversityFee
+	err := row.Scan(
+		&i.ID,
+		&i.UniversityID,
+		&i.Label,
+		&i.Value,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createUniversityScholarship = `-- name: CreateUniversityScholarship :one
+INSERT INTO university_scholarships (
+  university_id,
+  name,
+  amount,
+  status,
+  sort_order
+) VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5
+)
+RETURNING id, university_id, name, amount, status, sort_order, created_at, updated_at, deleted_at
+`
+
+type CreateUniversityScholarshipParams struct {
+	UniversityID pgtype.UUID `json:"university_id"`
+	Name         string      `json:"name"`
+	Amount       pgtype.Text `json:"amount"`
+	Status       string      `json:"status"`
+	SortOrder    int32       `json:"sort_order"`
+}
+
+func (q *Queries) CreateUniversityScholarship(ctx context.Context, arg CreateUniversityScholarshipParams) (UniversityScholarship, error) {
+	row := q.db.QueryRow(ctx, createUniversityScholarship,
+		arg.UniversityID,
+		arg.Name,
+		arg.Amount,
+		arg.Status,
+		arg.SortOrder,
+	)
+	var i UniversityScholarship
+	err := row.Scan(
+		&i.ID,
+		&i.UniversityID,
+		&i.Name,
+		&i.Amount,
+		&i.Status,
+		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -271,7 +412,7 @@ func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (Course, err
 }
 
 const getUniversityByID = `-- name: GetUniversityByID :one
-SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+SELECT id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 FROM universities
 WHERE id = $1
   AND deleted_at IS NULL
@@ -286,11 +427,21 @@ func (q *Queries) GetUniversityByID(ctx context.Context, id pgtype.UUID) (Univer
 		&i.Name,
 		&i.Type,
 		&i.Province,
+		&i.City,
+		&i.Country,
 		&i.Description,
 		&i.LogoUrl,
+		&i.CampusImageUrl,
 		&i.Website,
 		&i.Email,
 		&i.Phone,
+		&i.FoundedYear,
+		&i.Address,
+		&i.MapUrl,
+		&i.AcademicCalendar,
+		&i.StudentCount,
+		&i.AdmissionsDeadline,
+		&i.Tags,
 		&i.Verified,
 		&i.VerifiedAt,
 		&i.CreatedBy,
@@ -302,7 +453,7 @@ func (q *Queries) GetUniversityByID(ctx context.Context, id pgtype.UUID) (Univer
 }
 
 const getUniversityBySlug = `-- name: GetUniversityBySlug :one
-SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+SELECT id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 FROM universities
 WHERE slug = $1
   AND deleted_at IS NULL
@@ -317,11 +468,21 @@ func (q *Queries) GetUniversityBySlug(ctx context.Context, slug string) (Univers
 		&i.Name,
 		&i.Type,
 		&i.Province,
+		&i.City,
+		&i.Country,
 		&i.Description,
 		&i.LogoUrl,
+		&i.CampusImageUrl,
 		&i.Website,
 		&i.Email,
 		&i.Phone,
+		&i.FoundedYear,
+		&i.Address,
+		&i.MapUrl,
+		&i.AcademicCalendar,
+		&i.StudentCount,
+		&i.AdmissionsDeadline,
+		&i.Tags,
 		&i.Verified,
 		&i.VerifiedAt,
 		&i.CreatedBy,
@@ -380,7 +541,7 @@ func (q *Queries) ListCMSCourses(ctx context.Context, arg ListCMSCoursesParams) 
 }
 
 const listCMSUniversities = `-- name: ListCMSUniversities :many
-SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+SELECT id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 FROM universities
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
@@ -407,11 +568,21 @@ func (q *Queries) ListCMSUniversities(ctx context.Context, arg ListCMSUniversiti
 			&i.Name,
 			&i.Type,
 			&i.Province,
+			&i.City,
+			&i.Country,
 			&i.Description,
 			&i.LogoUrl,
+			&i.CampusImageUrl,
 			&i.Website,
 			&i.Email,
 			&i.Phone,
+			&i.FoundedYear,
+			&i.Address,
+			&i.MapUrl,
+			&i.AcademicCalendar,
+			&i.StudentCount,
+			&i.AdmissionsDeadline,
+			&i.Tags,
 			&i.Verified,
 			&i.VerifiedAt,
 			&i.CreatedBy,
@@ -476,8 +647,50 @@ func (q *Queries) ListCourses(ctx context.Context, arg ListCoursesParams) ([]Cou
 	return items, nil
 }
 
+const listCoursesByUniversityID = `-- name: ListCoursesByUniversityID :many
+SELECT id, slug, university_id, name, area, level, regime, duration_years, annual_fee, entry_requirements, created_at, updated_at, deleted_at
+FROM courses
+WHERE university_id = $1
+  AND deleted_at IS NULL
+ORDER BY level ASC, name ASC
+`
+
+func (q *Queries) ListCoursesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]Course, error) {
+	rows, err := q.db.Query(ctx, listCoursesByUniversityID, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Course{}
+	for rows.Next() {
+		var i Course
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.UniversityID,
+			&i.Name,
+			&i.Area,
+			&i.Level,
+			&i.Regime,
+			&i.DurationYears,
+			&i.AnnualFee,
+			&i.EntryRequirements,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUniversities = `-- name: ListUniversities :many
-SELECT id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+SELECT id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 FROM universities
 WHERE deleted_at IS NULL
 ORDER BY name ASC
@@ -504,11 +717,21 @@ func (q *Queries) ListUniversities(ctx context.Context, arg ListUniversitiesPara
 			&i.Name,
 			&i.Type,
 			&i.Province,
+			&i.City,
+			&i.Country,
 			&i.Description,
 			&i.LogoUrl,
+			&i.CampusImageUrl,
 			&i.Website,
 			&i.Email,
 			&i.Phone,
+			&i.FoundedYear,
+			&i.Address,
+			&i.MapUrl,
+			&i.AcademicCalendar,
+			&i.StudentCount,
+			&i.AdmissionsDeadline,
+			&i.Tags,
 			&i.Verified,
 			&i.VerifiedAt,
 			&i.CreatedBy,
@@ -524,6 +747,105 @@ func (q *Queries) ListUniversities(ctx context.Context, arg ListUniversitiesPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const listUniversityFeesByUniversityID = `-- name: ListUniversityFeesByUniversityID :many
+SELECT id, university_id, label, value, sort_order, created_at, updated_at, deleted_at
+FROM university_fees
+WHERE university_id = $1
+  AND deleted_at IS NULL
+ORDER BY sort_order ASC, created_at ASC
+`
+
+func (q *Queries) ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityFee, error) {
+	rows, err := q.db.Query(ctx, listUniversityFeesByUniversityID, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UniversityFee{}
+	for rows.Next() {
+		var i UniversityFee
+		if err := rows.Scan(
+			&i.ID,
+			&i.UniversityID,
+			&i.Label,
+			&i.Value,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUniversityScholarshipsByUniversityID = `-- name: ListUniversityScholarshipsByUniversityID :many
+SELECT id, university_id, name, amount, status, sort_order, created_at, updated_at, deleted_at
+FROM university_scholarships
+WHERE university_id = $1
+  AND deleted_at IS NULL
+ORDER BY sort_order ASC, created_at ASC
+`
+
+func (q *Queries) ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityScholarship, error) {
+	rows, err := q.db.Query(ctx, listUniversityScholarshipsByUniversityID, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UniversityScholarship{}
+	for rows.Next() {
+		var i UniversityScholarship
+		if err := rows.Scan(
+			&i.ID,
+			&i.UniversityID,
+			&i.Name,
+			&i.Amount,
+			&i.Status,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const softDeleteUniversityFeesByUniversityID = `-- name: SoftDeleteUniversityFeesByUniversityID :exec
+UPDATE university_fees
+SET deleted_at = NOW()
+WHERE university_id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteUniversityFeesByUniversityID, universityID)
+	return err
+}
+
+const softDeleteUniversityScholarshipsByUniversityID = `-- name: SoftDeleteUniversityScholarshipsByUniversityID :exec
+UPDATE university_scholarships
+SET deleted_at = NOW()
+WHERE university_id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteUniversityScholarshipsByUniversityID, universityID)
+	return err
 }
 
 const updateCourse = `-- name: UpdateCourse :one
@@ -591,26 +913,46 @@ SET
   name = $2,
   type = $3,
   province = $4,
-  description = $5,
-  logo_url = $6,
-  website = $7,
-  email = $8,
-  phone = $9
+  city = $5,
+  country = $6,
+  description = $7,
+  logo_url = $8,
+  campus_image_url = $9,
+  website = $10,
+  email = $11,
+  phone = $12,
+  founded_year = $13,
+  address = $14,
+  map_url = $15,
+  academic_calendar = $16,
+  student_count = $17,
+  admissions_deadline = $18,
+  tags = $19
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, slug, name, type, province, description, logo_url, website, email, phone, verified, verified_at, created_by, created_at, updated_at, deleted_at
+RETURNING id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
 `
 
 type UpdateUniversityParams struct {
-	ID          pgtype.UUID `json:"id"`
-	Name        string      `json:"name"`
-	Type        string      `json:"type"`
-	Province    string      `json:"province"`
-	Description pgtype.Text `json:"description"`
-	LogoUrl     pgtype.Text `json:"logo_url"`
-	Website     pgtype.Text `json:"website"`
-	Email       pgtype.Text `json:"email"`
-	Phone       pgtype.Text `json:"phone"`
+	ID                 pgtype.UUID `json:"id"`
+	Name               string      `json:"name"`
+	Type               string      `json:"type"`
+	Province           string      `json:"province"`
+	City               pgtype.Text `json:"city"`
+	Country            string      `json:"country"`
+	Description        pgtype.Text `json:"description"`
+	LogoUrl            pgtype.Text `json:"logo_url"`
+	CampusImageUrl     pgtype.Text `json:"campus_image_url"`
+	Website            pgtype.Text `json:"website"`
+	Email              pgtype.Text `json:"email"`
+	Phone              pgtype.Text `json:"phone"`
+	FoundedYear        pgtype.Int4 `json:"founded_year"`
+	Address            pgtype.Text `json:"address"`
+	MapUrl             pgtype.Text `json:"map_url"`
+	AcademicCalendar   pgtype.Text `json:"academic_calendar"`
+	StudentCount       pgtype.Int4 `json:"student_count"`
+	AdmissionsDeadline pgtype.Date `json:"admissions_deadline"`
+	Tags               []string    `json:"tags"`
 }
 
 func (q *Queries) UpdateUniversity(ctx context.Context, arg UpdateUniversityParams) (University, error) {
@@ -619,11 +961,21 @@ func (q *Queries) UpdateUniversity(ctx context.Context, arg UpdateUniversityPara
 		arg.Name,
 		arg.Type,
 		arg.Province,
+		arg.City,
+		arg.Country,
 		arg.Description,
 		arg.LogoUrl,
+		arg.CampusImageUrl,
 		arg.Website,
 		arg.Email,
 		arg.Phone,
+		arg.FoundedYear,
+		arg.Address,
+		arg.MapUrl,
+		arg.AcademicCalendar,
+		arg.StudentCount,
+		arg.AdmissionsDeadline,
+		arg.Tags,
 	)
 	var i University
 	err := row.Scan(
@@ -632,11 +984,21 @@ func (q *Queries) UpdateUniversity(ctx context.Context, arg UpdateUniversityPara
 		&i.Name,
 		&i.Type,
 		&i.Province,
+		&i.City,
+		&i.Country,
 		&i.Description,
 		&i.LogoUrl,
+		&i.CampusImageUrl,
 		&i.Website,
 		&i.Email,
 		&i.Phone,
+		&i.FoundedYear,
+		&i.Address,
+		&i.MapUrl,
+		&i.AcademicCalendar,
+		&i.StudentCount,
+		&i.AdmissionsDeadline,
+		&i.Tags,
 		&i.Verified,
 		&i.VerifiedAt,
 		&i.CreatedBy,

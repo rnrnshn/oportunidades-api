@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
 )
@@ -38,11 +39,21 @@ func (r *PostgresRepository) ListUniversities(ctx context.Context, params querie
 			&item.Name,
 			&item.Type,
 			&item.Province,
+			&item.City,
+			&item.Country,
 			&item.Description,
 			&item.LogoUrl,
+			&item.CampusImageUrl,
 			&item.Website,
 			&item.Email,
 			&item.Phone,
+			&item.FoundedYear,
+			&item.Address,
+			&item.MapUrl,
+			&item.AcademicCalendar,
+			&item.StudentCount,
+			&item.AdmissionsDeadline,
+			&item.Tags,
 			&item.Verified,
 			&item.VerifiedAt,
 			&item.CreatedBy,
@@ -80,6 +91,18 @@ func (r *PostgresRepository) GetUniversityBySlug(ctx context.Context, slug strin
 	}
 
 	return item, err
+}
+
+func (r *PostgresRepository) ListCoursesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.Course, error) {
+	return r.queries.ListCoursesByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityFee, error) {
+	return r.queries.ListUniversityFeesByUniversityID(ctx, universityID)
+}
+
+func (r *PostgresRepository) ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]queries.UniversityScholarship, error) {
+	return r.queries.ListUniversityScholarshipsByUniversityID(ctx, universityID)
 }
 
 func (r *PostgresRepository) ListCourses(ctx context.Context, params queries.ListCoursesParams, filters CourseFilters) ([]queries.Course, error) {
@@ -142,7 +165,7 @@ func (r *PostgresRepository) GetCourseBySlug(ctx context.Context, slug string) (
 }
 
 func buildUniversityListQuery(filters UniversityFilters, count bool) (string, []any) {
-	selectClause := `SELECT u.id, u.slug, u.name, u.type, u.province, u.description, u.logo_url, u.website, u.email, u.phone, u.verified, u.verified_at, u.created_by, u.created_at, u.updated_at, u.deleted_at FROM universities u`
+	selectClause := `SELECT u.id, u.slug, u.name, u.type, u.province, u.city, u.country, u.description, u.logo_url, u.campus_image_url, u.website, u.email, u.phone, u.founded_year, u.address, u.map_url, u.academic_calendar, u.student_count, u.admissions_deadline, u.tags, u.verified, u.verified_at, u.created_by, u.created_at, u.updated_at, u.deleted_at FROM universities u`
 	if count {
 		selectClause = `SELECT COUNT(*) FROM universities u`
 	}

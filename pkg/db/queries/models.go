@@ -84,24 +84,37 @@ type MentorshipSession struct {
 }
 
 type Opportunity struct {
-	ID           pgtype.UUID        `json:"id"`
-	Slug         string             `json:"slug"`
-	Title        string             `json:"title"`
-	Type         string             `json:"type"`
-	EntityName   string             `json:"entity_name"`
-	Description  string             `json:"description"`
-	Requirements pgtype.Text        `json:"requirements"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	ApplyUrl     pgtype.Text        `json:"apply_url"`
-	Country      string             `json:"country"`
-	Language     pgtype.Text        `json:"language"`
-	Area         pgtype.Text        `json:"area"`
-	IsActive     bool               `json:"is_active"`
-	PublishedBy  pgtype.UUID        `json:"published_by"`
-	Verified     bool               `json:"verified"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	ID                 pgtype.UUID        `json:"id"`
+	Slug               string             `json:"slug"`
+	Title              string             `json:"title"`
+	Type               string             `json:"type"`
+	EntityName         string             `json:"entity_name"`
+	Description        string             `json:"description"`
+	Requirements       pgtype.Text        `json:"requirements"`
+	Deadline           pgtype.Timestamptz `json:"deadline"`
+	ApplyUrl           pgtype.Text        `json:"apply_url"`
+	ExternalUrlLabel   pgtype.Text        `json:"external_url_label"`
+	Country            string             `json:"country"`
+	Location           pgtype.Text        `json:"location"`
+	IsRemote           bool               `json:"is_remote"`
+	Language           pgtype.Text        `json:"language"`
+	Area               pgtype.Text        `json:"area"`
+	HeroImageUrl       pgtype.Text        `json:"hero_image_url"`
+	ProviderLogoUrl    pgtype.Text        `json:"provider_logo_url"`
+	AmountMin          pgtype.Numeric     `json:"amount_min"`
+	AmountMax          pgtype.Numeric     `json:"amount_max"`
+	AmountCurrency     string             `json:"amount_currency"`
+	Coverage           []string           `json:"coverage"`
+	Eligibility        pgtype.Text        `json:"eligibility"`
+	ApplicationProcess pgtype.Text        `json:"application_process"`
+	DegreeLevel        pgtype.Text        `json:"degree_level"`
+	ProgramArea        pgtype.Text        `json:"program_area"`
+	IsActive           bool               `json:"is_active"`
+	PublishedBy        pgtype.UUID        `json:"published_by"`
+	Verified           bool               `json:"verified"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type RefreshToken struct {
@@ -131,22 +144,55 @@ type Report struct {
 }
 
 type University struct {
-	ID          pgtype.UUID        `json:"id"`
-	Slug        string             `json:"slug"`
-	Name        string             `json:"name"`
-	Type        string             `json:"type"`
-	Province    string             `json:"province"`
-	Description pgtype.Text        `json:"description"`
-	LogoUrl     pgtype.Text        `json:"logo_url"`
-	Website     pgtype.Text        `json:"website"`
-	Email       pgtype.Text        `json:"email"`
-	Phone       pgtype.Text        `json:"phone"`
-	Verified    bool               `json:"verified"`
-	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
-	CreatedBy   pgtype.UUID        `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ID                 pgtype.UUID        `json:"id"`
+	Slug               string             `json:"slug"`
+	Name               string             `json:"name"`
+	Type               string             `json:"type"`
+	Province           string             `json:"province"`
+	City               pgtype.Text        `json:"city"`
+	Country            string             `json:"country"`
+	Description        pgtype.Text        `json:"description"`
+	LogoUrl            pgtype.Text        `json:"logo_url"`
+	CampusImageUrl     pgtype.Text        `json:"campus_image_url"`
+	Website            pgtype.Text        `json:"website"`
+	Email              pgtype.Text        `json:"email"`
+	Phone              pgtype.Text        `json:"phone"`
+	FoundedYear        pgtype.Int4        `json:"founded_year"`
+	Address            pgtype.Text        `json:"address"`
+	MapUrl             pgtype.Text        `json:"map_url"`
+	AcademicCalendar   pgtype.Text        `json:"academic_calendar"`
+	StudentCount       pgtype.Int4        `json:"student_count"`
+	AdmissionsDeadline pgtype.Date        `json:"admissions_deadline"`
+	Tags               []string           `json:"tags"`
+	Verified           bool               `json:"verified"`
+	VerifiedAt         pgtype.Timestamptz `json:"verified_at"`
+	CreatedBy          pgtype.UUID        `json:"created_by"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type UniversityFee struct {
+	ID           pgtype.UUID        `json:"id"`
+	UniversityID pgtype.UUID        `json:"university_id"`
+	Label        string             `json:"label"`
+	Value        string             `json:"value"`
+	SortOrder    int32              `json:"sort_order"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type UniversityScholarship struct {
+	ID           pgtype.UUID        `json:"id"`
+	UniversityID pgtype.UUID        `json:"university_id"`
+	Name         string             `json:"name"`
+	Amount       pgtype.Text        `json:"amount"`
+	Status       string             `json:"status"`
+	SortOrder    int32              `json:"sort_order"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type User struct {

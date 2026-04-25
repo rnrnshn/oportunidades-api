@@ -51,20 +51,33 @@ type OpportunityDetailResult struct {
 }
 
 type OpportunityItem struct {
-	ID           string `json:"id"`
-	Slug         string `json:"slug"`
-	Title        string `json:"title"`
-	Type         string `json:"type"`
-	EntityName   string `json:"entity_name"`
-	Description  string `json:"description"`
-	Requirements string `json:"requirements,omitempty"`
-	Deadline     string `json:"deadline,omitempty"`
-	ApplyURL     string `json:"apply_url,omitempty"`
-	Country      string `json:"country"`
-	Language     string `json:"language,omitempty"`
-	Area         string `json:"area,omitempty"`
-	IsActive     bool   `json:"is_active"`
-	Verified     bool   `json:"verified"`
+	ID                 string   `json:"id"`
+	Slug               string   `json:"slug"`
+	Title              string   `json:"title"`
+	Type               string   `json:"type"`
+	EntityName         string   `json:"entity_name"`
+	Description        string   `json:"description"`
+	Requirements       string   `json:"requirements,omitempty"`
+	Deadline           string   `json:"deadline,omitempty"`
+	ApplyURL           string   `json:"apply_url,omitempty"`
+	ExternalURLLabel   string   `json:"external_url_label,omitempty"`
+	Country            string   `json:"country"`
+	Location           string   `json:"location,omitempty"`
+	IsRemote           bool     `json:"is_remote"`
+	Language           string   `json:"language,omitempty"`
+	Area               string   `json:"area,omitempty"`
+	HeroImageURL       string   `json:"hero_image_url,omitempty"`
+	ProviderLogoURL    string   `json:"provider_logo_url,omitempty"`
+	AmountMin          string   `json:"amount_min,omitempty"`
+	AmountMax          string   `json:"amount_max,omitempty"`
+	AmountCurrency     string   `json:"amount_currency"`
+	Coverage           []string `json:"coverage"`
+	Eligibility        string   `json:"eligibility,omitempty"`
+	ApplicationProcess string   `json:"application_process,omitempty"`
+	DegreeLevel        string   `json:"degree_level,omitempty"`
+	ProgramArea        string   `json:"program_area,omitempty"`
+	IsActive           bool     `json:"is_active"`
+	Verified           bool     `json:"verified"`
 }
 
 func NewService(repo Repository) *Service {
@@ -145,20 +158,33 @@ func mapOpportunity(item queries.Opportunity) (OpportunityItem, error) {
 	}
 
 	return OpportunityItem{
-		ID:           id.String(),
-		Slug:         item.Slug,
-		Title:        item.Title,
-		Type:         item.Type,
-		EntityName:   item.EntityName,
-		Description:  item.Description,
-		Requirements: textValue(item.Requirements),
-		Deadline:     timestamptzValue(item.Deadline),
-		ApplyURL:     textValue(item.ApplyUrl),
-		Country:      item.Country,
-		Language:     textValue(item.Language),
-		Area:         textValue(item.Area),
-		IsActive:     item.IsActive,
-		Verified:     item.Verified,
+		ID:                 id.String(),
+		Slug:               item.Slug,
+		Title:              item.Title,
+		Type:               item.Type,
+		EntityName:         item.EntityName,
+		Description:        item.Description,
+		Requirements:       textValue(item.Requirements),
+		Deadline:           timestamptzValue(item.Deadline),
+		ApplyURL:           textValue(item.ApplyUrl),
+		ExternalURLLabel:   textValue(item.ExternalUrlLabel),
+		Country:            item.Country,
+		Location:           textValue(item.Location),
+		IsRemote:           item.IsRemote,
+		Language:           textValue(item.Language),
+		Area:               textValue(item.Area),
+		HeroImageURL:       textValue(item.HeroImageUrl),
+		ProviderLogoURL:    textValue(item.ProviderLogoUrl),
+		AmountMin:          numericValue(item.AmountMin),
+		AmountMax:          numericValue(item.AmountMax),
+		AmountCurrency:     item.AmountCurrency,
+		Coverage:           item.Coverage,
+		Eligibility:        textValue(item.Eligibility),
+		ApplicationProcess: textValue(item.ApplicationProcess),
+		DegreeLevel:        textValue(item.DegreeLevel),
+		ProgramArea:        textValue(item.ProgramArea),
+		IsActive:           item.IsActive,
+		Verified:           item.Verified,
 	}, nil
 }
 
@@ -184,4 +210,19 @@ func timestamptzValue(value pgtype.Timestamptz) string {
 	}
 
 	return value.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
+}
+
+func numericValue(value pgtype.Numeric) string {
+	if !value.Valid {
+		return ""
+	}
+	encodedValue, err := value.Value()
+	if err != nil || encodedValue == nil {
+		return ""
+	}
+	formattedValue, ok := encodedValue.(string)
+	if !ok {
+		return ""
+	}
+	return formattedValue
 }

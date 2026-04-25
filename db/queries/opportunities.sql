@@ -32,9 +32,22 @@ INSERT INTO opportunities (
   requirements,
   deadline,
   apply_url,
+  external_url_label,
   country,
+  location,
+  is_remote,
   language,
   area,
+  hero_image_url,
+  provider_logo_url,
+  amount_min,
+  amount_max,
+  amount_currency,
+  coverage,
+  eligibility,
+  application_process,
+  degree_level,
+  program_area,
   is_active,
   published_by,
   verified
@@ -52,7 +65,20 @@ INSERT INTO opportunities (
   $11,
   $12,
   $13,
-  $14
+  $14,
+  $15,
+  $16,
+  $17,
+  $18,
+  $19,
+  $20,
+  $21,
+  $22,
+  $23,
+  $24,
+  $25,
+  $26,
+  $27
 )
 RETURNING *;
 
@@ -92,9 +118,22 @@ SET
   requirements = $6,
   deadline = $7,
   apply_url = $8,
-  country = $9,
-  language = $10,
-  area = $11
+  external_url_label = $9,
+  country = $10,
+  location = $11,
+  is_remote = $12,
+  language = $13,
+  area = $14,
+  hero_image_url = $15,
+  provider_logo_url = $16,
+  amount_min = $17,
+  amount_max = $18,
+  amount_currency = $19,
+  coverage = $20,
+  eligibility = $21,
+  application_process = $22,
+  degree_level = $23,
+  program_area = $24
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;

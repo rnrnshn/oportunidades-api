@@ -16,41 +16,79 @@ import (
 type Handler struct{ service *Service }
 
 type createArticleRequest struct {
-	Title          string `json:"title"`
-	Excerpt        string `json:"excerpt"`
-	Content        string `json:"content"`
+	Title          string          `json:"title"`
+	Excerpt        string          `json:"excerpt"`
+	Content        string          `json:"content"`
 	ContentJSON    json.RawMessage `json:"content_json"`
-	CoverImageURL  string `json:"cover_image_url"`
-	Type           string `json:"type"`
-	SourceName     string `json:"source_name"`
-	SourceURL      string `json:"source_url"`
-	SEOTitle       string `json:"seo_title"`
-	SEODescription string `json:"seo_description"`
-	IsFeatured     *bool  `json:"is_featured"`
+	CoverImageURL  string          `json:"cover_image_url"`
+	Type           string          `json:"type"`
+	SourceName     string          `json:"source_name"`
+	SourceURL      string          `json:"source_url"`
+	SEOTitle       string          `json:"seo_title"`
+	SEODescription string          `json:"seo_description"`
+	IsFeatured     *bool           `json:"is_featured"`
 }
 
 type createOpportunityRequest struct {
-	Title        string `json:"title"`
-	Type         string `json:"type"`
-	EntityName   string `json:"entity_name"`
-	Description  string `json:"description"`
-	Requirements string `json:"requirements"`
-	Deadline     string `json:"deadline"`
-	ApplyURL     string `json:"apply_url"`
-	Country      string `json:"country"`
-	Language     string `json:"language"`
-	Area         string `json:"area"`
+	Title              string   `json:"title"`
+	Type               string   `json:"type"`
+	EntityName         string   `json:"entity_name"`
+	Description        string   `json:"description"`
+	Requirements       string   `json:"requirements"`
+	Deadline           string   `json:"deadline"`
+	ApplyURL           string   `json:"apply_url"`
+	ExternalURLLabel   string   `json:"external_url_label"`
+	Country            string   `json:"country"`
+	Location           string   `json:"location"`
+	IsRemote           bool     `json:"is_remote"`
+	Language           string   `json:"language"`
+	Area               string   `json:"area"`
+	HeroImageURL       string   `json:"hero_image_url"`
+	ProviderLogoURL    string   `json:"provider_logo_url"`
+	AmountMin          string   `json:"amount_min"`
+	AmountMax          string   `json:"amount_max"`
+	AmountCurrency     string   `json:"amount_currency"`
+	Coverage           []string `json:"coverage"`
+	Eligibility        string   `json:"eligibility"`
+	ApplicationProcess string   `json:"application_process"`
+	DegreeLevel        string   `json:"degree_level"`
+	ProgramArea        string   `json:"program_area"`
 }
 
 type createUniversityRequest struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Province    string `json:"province"`
-	Description string `json:"description"`
-	LogoURL     string `json:"logo_url"`
-	Website     string `json:"website"`
-	Email       string `json:"email"`
-	Phone       string `json:"phone"`
+	Name               string                         `json:"name"`
+	Type               string                         `json:"type"`
+	Province           string                         `json:"province"`
+	City               string                         `json:"city"`
+	Country            string                         `json:"country"`
+	Description        string                         `json:"description"`
+	LogoURL            string                         `json:"logo_url"`
+	CampusImageURL     string                         `json:"campus_image_url"`
+	Website            string                         `json:"website"`
+	Email              string                         `json:"email"`
+	Phone              string                         `json:"phone"`
+	FoundedYear        int32                          `json:"founded_year"`
+	Address            string                         `json:"address"`
+	MapURL             string                         `json:"map_url"`
+	AcademicCalendar   string                         `json:"academic_calendar"`
+	StudentCount       int32                          `json:"student_count"`
+	AdmissionsDeadline string                         `json:"admissions_deadline"`
+	Tags               []string                       `json:"tags"`
+	Fees               []universityFeeRequest         `json:"fees"`
+	Scholarships       []universityScholarshipRequest `json:"scholarships"`
+}
+
+type universityFeeRequest struct {
+	Label     string `json:"label"`
+	Value     string `json:"value"`
+	SortOrder int32  `json:"sort_order"`
+}
+
+type universityScholarshipRequest struct {
+	Name      string `json:"name"`
+	Amount    string `json:"amount"`
+	Status    string `json:"status"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 type createCourseRequest struct {
@@ -158,8 +196,30 @@ func (h *Handler) CreateOpportunity(c *fiber.Ctx) error {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
 	result, err := h.service.CreateOpportunity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateOpportunityInput{
-		PublishedBy: currentUser.ID,
-		Title:       strings.TrimSpace(request.Title), Type: strings.TrimSpace(request.Type), EntityName: strings.TrimSpace(request.EntityName), Description: strings.TrimSpace(request.Description), Requirements: strings.TrimSpace(request.Requirements), Deadline: strings.TrimSpace(request.Deadline), ApplyURL: strings.TrimSpace(request.ApplyURL), Country: strings.TrimSpace(request.Country), Language: strings.TrimSpace(request.Language), Area: strings.TrimSpace(request.Area),
+		PublishedBy:        currentUser.ID,
+		Title:              strings.TrimSpace(request.Title),
+		Type:               strings.TrimSpace(request.Type),
+		EntityName:         strings.TrimSpace(request.EntityName),
+		Description:        strings.TrimSpace(request.Description),
+		Requirements:       strings.TrimSpace(request.Requirements),
+		Deadline:           strings.TrimSpace(request.Deadline),
+		ApplyURL:           strings.TrimSpace(request.ApplyURL),
+		ExternalURLLabel:   strings.TrimSpace(request.ExternalURLLabel),
+		Country:            strings.TrimSpace(request.Country),
+		Location:           strings.TrimSpace(request.Location),
+		IsRemote:           request.IsRemote,
+		Language:           strings.TrimSpace(request.Language),
+		Area:               strings.TrimSpace(request.Area),
+		HeroImageURL:       strings.TrimSpace(request.HeroImageURL),
+		ProviderLogoURL:    strings.TrimSpace(request.ProviderLogoURL),
+		AmountMin:          strings.TrimSpace(request.AmountMin),
+		AmountMax:          strings.TrimSpace(request.AmountMax),
+		AmountCurrency:     strings.TrimSpace(request.AmountCurrency),
+		Coverage:           request.Coverage,
+		Eligibility:        strings.TrimSpace(request.Eligibility),
+		ApplicationProcess: strings.TrimSpace(request.ApplicationProcess),
+		DegreeLevel:        strings.TrimSpace(request.DegreeLevel),
+		ProgramArea:        strings.TrimSpace(request.ProgramArea),
 	})
 	if err != nil {
 		return handleError(err)
@@ -222,7 +282,9 @@ func (h *Handler) CreateUniversity(c *fiber.Ctx) error {
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para publicação CMS.", validationErrors.Details())
 	}
-	result, err := h.service.CreateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateUniversityInput{CreatedBy: currentUser.ID, Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	input := universityInputFromRequest(request)
+	input.CreatedBy = currentUser.ID
+	result, err := h.service.CreateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, input)
 	if err != nil {
 		return handleError(err)
 	}
@@ -244,7 +306,9 @@ func (h *Handler) UpdateUniversity(c *fiber.Ctx) error {
 	if !ok {
 		return apierror.Unauthorized("Token inválido.")
 	}
-	result, err := h.service.UpdateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateUniversityInput{ID: strings.TrimSpace(c.Params("id")), Name: strings.TrimSpace(request.Name), Type: strings.TrimSpace(request.Type), Province: strings.TrimSpace(request.Province), Description: strings.TrimSpace(request.Description), LogoURL: strings.TrimSpace(request.LogoURL), Website: strings.TrimSpace(request.Website), Email: strings.TrimSpace(request.Email), Phone: strings.TrimSpace(request.Phone)})
+	input := universityInputFromRequest(request)
+	input.ID = strings.TrimSpace(c.Params("id"))
+	result, err := h.service.UpdateUniversity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, input)
 	if err != nil {
 		return handleError(err)
 	}
@@ -432,22 +496,76 @@ func (h *Handler) UpdateOpportunity(c *fiber.Ctx) error {
 		return apierror.Unauthorized("Token inválido.")
 	}
 	result, err := h.service.UpdateOpportunity(c.UserContext(), Actor{UserID: currentUser.ID, Role: currentUser.Role}, CreateOpportunityInput{
-		ID:           strings.TrimSpace(c.Params("id")),
-		Title:        strings.TrimSpace(request.Title),
-		Type:         strings.TrimSpace(request.Type),
-		EntityName:   strings.TrimSpace(request.EntityName),
-		Description:  strings.TrimSpace(request.Description),
-		Requirements: strings.TrimSpace(request.Requirements),
-		Deadline:     strings.TrimSpace(request.Deadline),
-		ApplyURL:     strings.TrimSpace(request.ApplyURL),
-		Country:      strings.TrimSpace(request.Country),
-		Language:     strings.TrimSpace(request.Language),
-		Area:         strings.TrimSpace(request.Area),
+		ID:                 strings.TrimSpace(c.Params("id")),
+		Title:              strings.TrimSpace(request.Title),
+		Type:               strings.TrimSpace(request.Type),
+		EntityName:         strings.TrimSpace(request.EntityName),
+		Description:        strings.TrimSpace(request.Description),
+		Requirements:       strings.TrimSpace(request.Requirements),
+		Deadline:           strings.TrimSpace(request.Deadline),
+		ApplyURL:           strings.TrimSpace(request.ApplyURL),
+		ExternalURLLabel:   strings.TrimSpace(request.ExternalURLLabel),
+		Country:            strings.TrimSpace(request.Country),
+		Location:           strings.TrimSpace(request.Location),
+		IsRemote:           request.IsRemote,
+		Language:           strings.TrimSpace(request.Language),
+		Area:               strings.TrimSpace(request.Area),
+		HeroImageURL:       strings.TrimSpace(request.HeroImageURL),
+		ProviderLogoURL:    strings.TrimSpace(request.ProviderLogoURL),
+		AmountMin:          strings.TrimSpace(request.AmountMin),
+		AmountMax:          strings.TrimSpace(request.AmountMax),
+		AmountCurrency:     strings.TrimSpace(request.AmountCurrency),
+		Coverage:           request.Coverage,
+		Eligibility:        strings.TrimSpace(request.Eligibility),
+		ApplicationProcess: strings.TrimSpace(request.ApplicationProcess),
+		DegreeLevel:        strings.TrimSpace(request.DegreeLevel),
+		ProgramArea:        strings.TrimSpace(request.ProgramArea),
 	})
 	if err != nil {
 		return handleError(err)
 	}
 	return c.JSON(result)
+}
+
+func universityInputFromRequest(request createUniversityRequest) CreateUniversityInput {
+	var fees []UniversityFeeInput
+	if request.Fees != nil {
+		fees = make([]UniversityFeeInput, 0, len(request.Fees))
+		for _, fee := range request.Fees {
+			fees = append(fees, UniversityFeeInput{Label: strings.TrimSpace(fee.Label), Value: strings.TrimSpace(fee.Value), SortOrder: fee.SortOrder})
+		}
+	}
+
+	var scholarships []UniversityScholarshipInput
+	if request.Scholarships != nil {
+		scholarships = make([]UniversityScholarshipInput, 0, len(request.Scholarships))
+		for _, scholarship := range request.Scholarships {
+			scholarships = append(scholarships, UniversityScholarshipInput{Name: strings.TrimSpace(scholarship.Name), Amount: strings.TrimSpace(scholarship.Amount), Status: strings.TrimSpace(scholarship.Status), SortOrder: scholarship.SortOrder})
+		}
+	}
+
+	return CreateUniversityInput{
+		Name:               strings.TrimSpace(request.Name),
+		Type:               strings.TrimSpace(request.Type),
+		Province:           strings.TrimSpace(request.Province),
+		City:               strings.TrimSpace(request.City),
+		Country:            strings.TrimSpace(request.Country),
+		Description:        strings.TrimSpace(request.Description),
+		LogoURL:            strings.TrimSpace(request.LogoURL),
+		CampusImageURL:     strings.TrimSpace(request.CampusImageURL),
+		Website:            strings.TrimSpace(request.Website),
+		Email:              strings.TrimSpace(request.Email),
+		Phone:              strings.TrimSpace(request.Phone),
+		FoundedYear:        request.FoundedYear,
+		Address:            strings.TrimSpace(request.Address),
+		MapURL:             strings.TrimSpace(request.MapURL),
+		AcademicCalendar:   strings.TrimSpace(request.AcademicCalendar),
+		StudentCount:       request.StudentCount,
+		AdmissionsDeadline: strings.TrimSpace(request.AdmissionsDeadline),
+		Tags:               request.Tags,
+		Fees:               fees,
+		Scholarships:       scholarships,
+	}
 }
 
 func handleError(err error) error {

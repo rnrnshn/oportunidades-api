@@ -67,17 +67,45 @@ type CourseDetailResult struct {
 }
 
 type UniversityItem struct {
-	ID          string `json:"id"`
-	Slug        string `json:"slug"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Province    string `json:"province"`
-	Description string `json:"description,omitempty"`
-	LogoURL     string `json:"logo_url,omitempty"`
-	Website     string `json:"website,omitempty"`
-	Email       string `json:"email,omitempty"`
-	Phone       string `json:"phone,omitempty"`
-	Verified    bool   `json:"verified"`
+	ID                 string                      `json:"id"`
+	Slug               string                      `json:"slug"`
+	Name               string                      `json:"name"`
+	Type               string                      `json:"type"`
+	Province           string                      `json:"province"`
+	City               string                      `json:"city,omitempty"`
+	Country            string                      `json:"country"`
+	Description        string                      `json:"description,omitempty"`
+	LogoURL            string                      `json:"logo_url,omitempty"`
+	CampusImageURL     string                      `json:"campus_image_url,omitempty"`
+	Website            string                      `json:"website,omitempty"`
+	Email              string                      `json:"email,omitempty"`
+	Phone              string                      `json:"phone,omitempty"`
+	FoundedYear        *int32                      `json:"founded_year,omitempty"`
+	Address            string                      `json:"address,omitempty"`
+	MapURL             string                      `json:"map_url,omitempty"`
+	AcademicCalendar   string                      `json:"academic_calendar,omitempty"`
+	StudentCount       *int32                      `json:"student_count,omitempty"`
+	AdmissionsDeadline string                      `json:"admissions_deadline,omitempty"`
+	Tags               []string                    `json:"tags"`
+	Courses            []CourseItem                `json:"courses,omitempty"`
+	Fees               []UniversityFeeItem         `json:"fees,omitempty"`
+	Scholarships       []UniversityScholarshipItem `json:"scholarships,omitempty"`
+	Verified           bool                        `json:"verified"`
+}
+
+type UniversityFeeItem struct {
+	ID        string `json:"id,omitempty"`
+	Label     string `json:"label"`
+	Value     string `json:"value"`
+	SortOrder int32  `json:"sort_order"`
+}
+
+type UniversityScholarshipItem struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name"`
+	Amount    string `json:"amount,omitempty"`
+	Status    string `json:"status"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 type CourseItem struct {
@@ -133,6 +161,45 @@ func (s *Service) GetUniversityBySlug(ctx context.Context, slug string) (*Univer
 	mappedItem, err := mapUniversity(item)
 	if err != nil {
 		return nil, err
+	}
+
+	courses, err := s.repo.ListCoursesByUniversityID(ctx, item.ID)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: list university courses: %w", err)
+	}
+	mappedItem.Courses = make([]CourseItem, 0, len(courses))
+	for _, course := range courses {
+		mappedCourse, err := mapCourse(course)
+		if err != nil {
+			return nil, err
+		}
+		mappedItem.Courses = append(mappedItem.Courses, mappedCourse)
+	}
+
+	fees, err := s.repo.ListUniversityFeesByUniversityID(ctx, item.ID)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: list university fees: %w", err)
+	}
+	mappedItem.Fees = make([]UniversityFeeItem, 0, len(fees))
+	for _, fee := range fees {
+		mappedFee, err := mapUniversityFee(fee)
+		if err != nil {
+			return nil, err
+		}
+		mappedItem.Fees = append(mappedItem.Fees, mappedFee)
+	}
+
+	scholarships, err := s.repo.ListUniversityScholarshipsByUniversityID(ctx, item.ID)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: list university scholarships: %w", err)
+	}
+	mappedItem.Scholarships = make([]UniversityScholarshipItem, 0, len(scholarships))
+	for _, scholarship := range scholarships {
+		mappedScholarship, err := mapUniversityScholarship(scholarship)
+		if err != nil {
+			return nil, err
+		}
+		mappedItem.Scholarships = append(mappedItem.Scholarships, mappedScholarship)
 	}
 
 	return &UniversityDetailResult{Data: mappedItem}, nil
@@ -212,18 +279,44 @@ func mapUniversity(item queries.University) (UniversityItem, error) {
 	}
 
 	return UniversityItem{
-		ID:          id.String(),
-		Slug:        item.Slug,
-		Name:        item.Name,
-		Type:        item.Type,
-		Province:    item.Province,
-		Description: textValue(item.Description),
-		LogoURL:     textValue(item.LogoUrl),
-		Website:     textValue(item.Website),
-		Email:       textValue(item.Email),
-		Phone:       textValue(item.Phone),
-		Verified:    item.Verified,
+		ID:                 id.String(),
+		Slug:               item.Slug,
+		Name:               item.Name,
+		Type:               item.Type,
+		Province:           item.Province,
+		City:               textValue(item.City),
+		Country:            item.Country,
+		Description:        textValue(item.Description),
+		LogoURL:            textValue(item.LogoUrl),
+		CampusImageURL:     textValue(item.CampusImageUrl),
+		Website:            textValue(item.Website),
+		Email:              textValue(item.Email),
+		Phone:              textValue(item.Phone),
+		FoundedYear:        int32Pointer(item.FoundedYear),
+		Address:            textValue(item.Address),
+		MapURL:             textValue(item.MapUrl),
+		AcademicCalendar:   textValue(item.AcademicCalendar),
+		StudentCount:       int32Pointer(item.StudentCount),
+		AdmissionsDeadline: dateValue(item.AdmissionsDeadline),
+		Tags:               item.Tags,
+		Verified:           item.Verified,
 	}, nil
+}
+
+func mapUniversityFee(item queries.UniversityFee) (UniversityFeeItem, error) {
+	id, err := uuidFromPg(item.ID)
+	if err != nil {
+		return UniversityFeeItem{}, fmt.Errorf("catalog: university fee id: %w", err)
+	}
+	return UniversityFeeItem{ID: id.String(), Label: item.Label, Value: item.Value, SortOrder: item.SortOrder}, nil
+}
+
+func mapUniversityScholarship(item queries.UniversityScholarship) (UniversityScholarshipItem, error) {
+	id, err := uuidFromPg(item.ID)
+	if err != nil {
+		return UniversityScholarshipItem{}, fmt.Errorf("catalog: university scholarship id: %w", err)
+	}
+	return UniversityScholarshipItem{ID: id.String(), Name: item.Name, Amount: textValue(item.Amount), Status: item.Status, SortOrder: item.SortOrder}, nil
 }
 
 func mapCourse(item queries.Course) (CourseItem, error) {
@@ -274,6 +367,13 @@ func int32Pointer(value pgtype.Int4) *int32 {
 
 	result := value.Int32
 	return &result
+}
+
+func dateValue(value pgtype.Date) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.Time.Format("2006-01-02")
 }
 
 func numericValue(value pgtype.Numeric) string {
