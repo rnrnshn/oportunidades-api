@@ -27,6 +27,29 @@ type OpportunityResult struct {
 	Data OpportunityItem `json:"data"`
 }
 
+type DashboardCounts struct {
+	Articles              int64 `json:"articles"`
+	Opportunities         int64 `json:"opportunities"`
+	PendingReports        int64 `json:"pending_reports"`
+	PendingMentorshipSessions int64 `json:"pending_mentorship_sessions"`
+}
+
+type DashboardRecentItem struct {
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Type   string `json:"type,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Status string `json:"status,omitempty"`
+}
+
+type DashboardResult struct {
+	Data struct {
+		Counts                     DashboardCounts         `json:"counts"`
+		RecentPendingReports       []DashboardRecentItem   `json:"recent_pending_reports"`
+		RecentUnverifiedOpportunities []DashboardRecentItem `json:"recent_unverified_opportunities"`
+	} `json:"data"`
+}
+
 type ReportsResult struct {
 	Data []ReportItem   `json:"data"`
 	Meta PaginationMeta `json:"meta"`
@@ -91,6 +114,62 @@ type ReportItem struct {
 }
 
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
+
+func (s *Service) Dashboard(ctx context.Context) (*DashboardResult, error) {
+	articlesCount, err := s.repo.CountCMSArticles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard count articles: %w", err)
+	}
+	opportunitiesCount, err := s.repo.CountCMSOpportunities(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard count opportunities: %w", err)
+	}
+	pendingReportsCount, err := s.repo.CountPendingReports(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard count pending reports: %w", err)
+	}
+	pendingSessionsCount, err := s.repo.CountPendingMentorshipSessions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard count pending sessions: %w", err)
+	}
+	recentReports, err := s.repo.ListRecentPendingReports(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard recent reports: %w", err)
+	}
+	recentOpportunities, err := s.repo.ListRecentUnverifiedOpportunities(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: dashboard recent opportunities: %w", err)
+	}
+
+	result := &DashboardResult{}
+	result.Data.Counts = DashboardCounts{
+		Articles:                  articlesCount,
+		Opportunities:             opportunitiesCount,
+		PendingReports:            pendingReportsCount,
+		PendingMentorshipSessions: pendingSessionsCount,
+	}
+
+	for _, r := range recentReports {
+		id, _ := uuidFromPg(r.ID)
+		result.Data.RecentPendingReports = append(result.Data.RecentPendingReports, DashboardRecentItem{
+			ID:     id.String(),
+			Reason: r.Reason,
+			Type:   r.EntityType,
+			Status: r.Status,
+		})
+	}
+
+	for _, o := range recentOpportunities {
+		id, _ := uuidFromPg(o.ID)
+		result.Data.RecentUnverifiedOpportunities = append(result.Data.RecentUnverifiedOpportunities, DashboardRecentItem{
+			ID:    id.String(),
+			Title: o.Title,
+			Type:  o.Type,
+		})
+	}
+
+	return result, nil
+}
 
 func (s *Service) PublishArticle(ctx context.Context, articleID string) (*ArticleResult, error) {
 	id, err := parseID(articleID)
@@ -411,4 +490,44 @@ func timestamptzValue(value pgtype.Timestamptz) string {
 		return ""
 	}
 	return value.Time.UTC().Format(time.RFC3339)
+}
+
+type AnalyticsResult struct {
+	Data struct {
+		ContentOverTime      []DailyContentCount `json:"content_over_time"`
+		OpportunitiesByType   []TypeCount         `json:"opportunities_by_type"`
+		OpportunitiesByStatus []TypeCount         `json:"opportunities_by_status"`
+	} `json:"data"`
+}
+
+func (s *Service) Analytics(ctx context.Context, days int) (*AnalyticsResult, error) {
+	if days < 1 || days > 365 {
+		days = 30
+	}
+	contentOverTime, err := s.repo.ContentCreatedPerDay(ctx, days)
+	if err != nil {
+		return nil, fmt.Errorf("admin: analytics content over time: %w", err)
+	}
+	byType, err := s.repo.OpportunitiesByType(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: analytics by type: %w", err)
+	}
+	byStatus, err := s.repo.OpportunitiesByStatus(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin: analytics by status: %w", err)
+	}
+	result := &AnalyticsResult{}
+	result.Data.ContentOverTime = contentOverTime
+	result.Data.OpportunitiesByType = byType
+	result.Data.OpportunitiesByStatus = byStatus
+	if result.Data.ContentOverTime == nil {
+		result.Data.ContentOverTime = []DailyContentCount{}
+	}
+	if result.Data.OpportunitiesByType == nil {
+		result.Data.OpportunitiesByType = []TypeCount{}
+	}
+	if result.Data.OpportunitiesByStatus == nil {
+		result.Data.OpportunitiesByStatus = []TypeCount{}
+	}
+	return result, nil
 }

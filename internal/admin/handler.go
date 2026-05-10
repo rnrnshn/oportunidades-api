@@ -20,6 +20,23 @@ type updateReportStatusRequest struct {
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
+func (h *Handler) Dashboard(c *fiber.Ctx) error {
+	result, err := h.service.Dashboard(c.UserContext())
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) Analytics(c *fiber.Ctx) error {
+	days := queryInt(c, "days", 30)
+	result, err := h.service.Analytics(c.UserContext(), days)
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
 func (h *Handler) PublishArticle(c *fiber.Ctx) error {
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")

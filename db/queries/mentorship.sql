@@ -110,3 +110,9 @@ SET
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
+
+-- name: CountPendingMentorshipSessions :one
+SELECT COUNT(*)
+FROM mentorship_sessions
+WHERE status = 'pending'
+  AND deleted_at IS NULL;

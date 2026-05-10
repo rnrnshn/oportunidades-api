@@ -23,4 +23,24 @@ type Repository interface {
 	CountReports(ctx context.Context, filters ReportListFilters) (int64, error)
 	GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error)
 	UpdateReportStatus(ctx context.Context, params queries.UpdateReportStatusParams) (queries.Report, error)
+	CountCMSArticles(ctx context.Context) (int64, error)
+	CountCMSOpportunities(ctx context.Context) (int64, error)
+	CountPendingReports(ctx context.Context) (int64, error)
+	CountPendingMentorshipSessions(ctx context.Context) (int64, error)
+	ListRecentPendingReports(ctx context.Context) ([]queries.Report, error)
+	ListRecentUnverifiedOpportunities(ctx context.Context) ([]queries.Opportunity, error)
+	ContentCreatedPerDay(ctx context.Context, days int) ([]DailyContentCount, error)
+	OpportunitiesByType(ctx context.Context) ([]TypeCount, error)
+	OpportunitiesByStatus(ctx context.Context) ([]TypeCount, error)
+}
+
+type DailyContentCount struct {
+	Date          string `json:"date"`
+	Articles      int64  `json:"articles"`
+	Opportunities int64  `json:"opportunities"`
+}
+
+type TypeCount struct {
+	Label string `json:"label"`
+	Count int64  `json:"count"`
 }

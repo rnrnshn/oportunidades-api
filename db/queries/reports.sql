@@ -69,3 +69,17 @@ SET
 WHERE id = $1
   AND deleted_at IS NULL
 RETURNING *;
+
+-- name: CountPendingReports :one
+SELECT COUNT(*)
+FROM reports
+WHERE status = 'pending'
+  AND deleted_at IS NULL;
+
+-- name: ListRecentPendingReports :many
+SELECT *
+FROM reports
+WHERE status = 'pending'
+  AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT 5;

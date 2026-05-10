@@ -149,3 +149,11 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*)
 FROM opportunities
 WHERE deleted_at IS NULL;
+
+-- name: ListRecentUnverifiedOpportunities :many
+SELECT *
+FROM opportunities
+WHERE verified = FALSE
+  AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT 5;
