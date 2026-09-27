@@ -143,6 +143,12 @@ type Report struct {
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type SavedOpportunity struct {
+	UserID        pgtype.UUID        `json:"user_id"`
+	OpportunityID pgtype.UUID        `json:"opportunity_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type University struct {
 	ID                 pgtype.UUID        `json:"id"`
 	Slug               string             `json:"slug"`

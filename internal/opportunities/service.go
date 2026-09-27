@@ -104,7 +104,7 @@ func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams
 
 	data := make([]OpportunityItem, 0, len(items))
 	for _, item := range items {
-		mappedItem, err := mapOpportunity(item)
+		mappedItem, err := MapOpportunity(item)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +123,7 @@ func (s *Service) GetOpportunityBySlug(ctx context.Context, slug string) (*Oppor
 		return nil, ErrNotFound
 	}
 
-	mappedItem, err := mapOpportunity(item)
+	mappedItem, err := MapOpportunity(item)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func buildMeta(total int64, page int, perPage int) PaginationMeta {
 	return PaginationMeta{Total: total, Page: page, PerPage: perPage, TotalPages: totalPages}
 }
 
-func mapOpportunity(item queries.Opportunity) (OpportunityItem, error) {
+func MapOpportunity(item queries.Opportunity) (OpportunityItem, error) {
 	id, err := uuidFromPg(item.ID)
 	if err != nil {
 		return OpportunityItem{}, fmt.Errorf("opportunities: id: %w", err)

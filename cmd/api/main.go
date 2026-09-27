@@ -23,6 +23,7 @@ import (
 	appmentorship "github.com/rnrnshn/oportunidades-api/internal/mentorship"
 	appopportunities "github.com/rnrnshn/oportunidades-api/internal/opportunities"
 	appreports "github.com/rnrnshn/oportunidades-api/internal/reports"
+	appsaved "github.com/rnrnshn/oportunidades-api/internal/saved"
 	appuploads "github.com/rnrnshn/oportunidades-api/internal/uploads"
 	"github.com/rnrnshn/oportunidades-api/pkg/apierror"
 	"github.com/rnrnshn/oportunidades-api/pkg/db"
@@ -171,6 +172,7 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool, log zerolog.Logger) {
 	reportsRepository := appreports.NewPostgresRepository(pool)
 	reportsService := appreports.NewService(reportsRepository)
 	reportsHandler := appreports.NewHandler(reportsService)
+	savedHandler := appsaved.NewHandler(appsaved.NewService(appsaved.NewPostgresRepository(pool)))
 	storageClient := appstorage.NewSupabaseClient(getEnv("SUPABASE_URL", ""), getEnv("SUPABASE_STORAGE_BUCKET", ""), getEnv("SUPABASE_SERVICE_ROLE_KEY", ""))
 	uploadsService := appuploads.NewService(storageClient)
 	uploadsHandler := appuploads.NewHandler(uploadsService)
@@ -194,6 +196,10 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool, log zerolog.Logger) {
 	accountGroup.Post("/password", accountHandler.ChangePassword)
 	accountGroup.Post("/logout-all", authHandler.LogoutAll)
 	accountGroup.Post("/deactivate", authHandler.DeactivateAccount)
+	accountGroup.Get("/saved", savedHandler.List)
+	accountGroup.Get("/saved/ids", savedHandler.IDs)
+	accountGroup.Put("/saved/:opportunityId", savedHandler.Save)
+	accountGroup.Delete("/saved/:opportunityId", savedHandler.Unsave)
 
 	cmsGroup := v1.Group("/cms", appauth.RequireRole(authService, "cms_partner", "admin"))
 	cmsGroup.Get("/articles", cmsHandler.ListArticles)

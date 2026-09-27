@@ -255,6 +255,15 @@ CREATE INDEX mentorship_sessions_requester_id_idx ON mentorship_sessions (reques
 CREATE INDEX mentorship_sessions_status_idx ON mentorship_sessions (status) WHERE deleted_at IS NULL;
 CREATE INDEX mentorship_sessions_deleted_at_idx ON mentorship_sessions (deleted_at);
 
+CREATE TABLE saved_opportunities (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  opportunity_id UUID NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, opportunity_id)
+);
+
+CREATE INDEX saved_opportunities_user_created_idx ON saved_opportunities (user_id, created_at DESC);
+
 CREATE TABLE reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   reporter_id UUID REFERENCES users(id),

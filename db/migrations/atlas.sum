@@ -1,4 +1,4 @@
-h1:g0lJjUgMXkEiVfeZmh+x16/lozXYNXExS114O+ZpMt0=
+h1:GX51T2J4ymEguFEl83H9uPTD/EM7jd1vLHvCSsIC3Ak=
 20260417231418_initial_schema.sql h1:OaQTOMQbx0c9E3Wvs50tRjGqAhtIwSv1zIvWyGHLxqg=
 20260417234207_add_mentorship.sql h1:yV5uNYldjM9afgjgLWR+IJF75yosc7ngPoOyXZZ4KD0=
 20260418000227_add_articles.sql h1:8kLNhQ1e2yDJfZXOZSclshMApFItcyN3bo7K2JXhyXk=
@@ -7,3 +7,4 @@ h1:g0lJjUgMXkEiVfeZmh+x16/lozXYNXExS114O+ZpMt0=
 20260418203508_add_report_review_metadata.sql h1:sV+6vlq1gs5+bMJlhl0rpu81quRYBt49yKtM6KexvgM=
 20260425011435_add_university_profile_details.sql h1:aMc6emcE3ViumPg1bYi6yo811AgmZD01H3z3+sm+CU4=
 20260425014318_add_scholarship_opportunity_details.sql h1:FFaavdjq88M5Amd9kXt5ceHKhBHZjzDPb6WcjSSoIJs=
+20260927120000_add_saved_opportunities.sql h1:7SpvDgJX3jSKZ9mv6A60SZ//JqiL6QDY1TQtOAai0Ps=

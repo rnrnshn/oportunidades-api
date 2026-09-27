@@ -25,6 +25,7 @@ type Querier interface {
 	CountPendingMentorshipSessions(ctx context.Context) (int64, error)
 	CountPendingReports(ctx context.Context) (int64, error)
 	CountReports(ctx context.Context) (int64, error)
+	CountSavedOpportunities(ctx context.Context, userID pgtype.UUID) (int64, error)
 	CountUniversities(ctx context.Context) (int64, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
 	CreateAuthActionToken(ctx context.Context, arg CreateAuthActionTokenParams) (AuthActionToken, error)
@@ -54,6 +55,7 @@ type Querier interface {
 	GetUniversityBySlug(ctx context.Context, slug string) (University, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	IsPublishedOpportunity(ctx context.Context, id pgtype.UUID) (bool, error)
 	ListArticles(ctx context.Context, arg ListArticlesParams) ([]Article, error)
 	ListCMSArticles(ctx context.Context, arg ListCMSArticlesParams) ([]Article, error)
 	ListCMSCourses(ctx context.Context, arg ListCMSCoursesParams) ([]Course, error)
@@ -67,6 +69,8 @@ type Querier interface {
 	ListRecentPendingReports(ctx context.Context) ([]Report, error)
 	ListRecentUnverifiedOpportunities(ctx context.Context) ([]Opportunity, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
+	ListSavedOpportunities(ctx context.Context, arg ListSavedOpportunitiesParams) ([]ListSavedOpportunitiesRow, error)
+	ListSavedOpportunityIDs(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
 	ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityFee, error)
 	ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityScholarship, error)
@@ -78,10 +82,12 @@ type Querier interface {
 	ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	SaveOpportunity(ctx context.Context, arg SaveOpportunityParams) error
 	SetUniversityVerified(ctx context.Context, arg SetUniversityVerifiedParams) (University, error)
 	SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error
 	SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error
 	UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
+	UnsaveOpportunity(ctx context.Context, arg UnsaveOpportunityParams) error
 	UpdateArticle(ctx context.Context, arg UpdateArticleParams) (Article, error)
 	UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error)
 	UpdateMentorshipSessionStatus(ctx context.Context, arg UpdateMentorshipSessionStatusParams) (MentorshipSession, error)
