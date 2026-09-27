@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -38,6 +39,23 @@ func TestGetProfile(t *testing.T) {
 	}
 	if result.Data.Email != "user@example.com" {
 		t.Fatalf("unexpected email: %s", result.Data.Email)
+	}
+	if result.Data.EmailVerified {
+		t.Fatal("expected unverified email")
+	}
+}
+
+func TestGetProfileReportsVerifiedEmail(t *testing.T) {
+	userID := uuid.New()
+	service := NewService(&mockRepository{getUserByIDFn: func(context.Context, pgtype.UUID) (queries.User, error) {
+		return queries.User{ID: uuidToPg(userID), Email: "user@example.com", Role: "user", Name: "User", EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}, nil
+	}})
+	result, err := service.GetProfile(context.Background(), userID.String())
+	if err != nil {
+		t.Fatalf("get profile returned error: %v", err)
+	}
+	if !result.Data.EmailVerified {
+		t.Fatal("expected verified email")
 	}
 }
 

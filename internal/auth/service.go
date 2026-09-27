@@ -88,11 +88,12 @@ type ActionResult struct {
 }
 
 type UserProfile struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Role          string `json:"role"`
+	Name          string `json:"name"`
+	AvatarURL     string `json:"avatar_url,omitempty"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 type Claims struct {
@@ -533,10 +534,11 @@ func (s *Service) publicURL(path string, token string) (string, error) {
 
 func profileFromUser(user queries.User, userID string) UserProfile {
 	profile := UserProfile{
-		ID:    userID,
-		Email: user.Email,
-		Role:  user.Role,
-		Name:  user.Name,
+		ID:            userID,
+		Email:         user.Email,
+		Role:          user.Role,
+		Name:          user.Name,
+		EmailVerified: user.EmailVerifiedAt.Valid,
 	}
 
 	if user.AvatarUrl.Valid {

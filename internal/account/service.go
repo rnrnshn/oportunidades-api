@@ -18,11 +18,12 @@ type ProfileResult struct {
 }
 
 type Profile struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Role          string `json:"role"`
+	Name          string `json:"name"`
+	AvatarURL     string `json:"avatar_url,omitempty"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 type UpdateProfileInput struct {
@@ -122,7 +123,7 @@ func mapProfile(user queries.User) (Profile, error) {
 	if err != nil {
 		return Profile{}, fmt.Errorf("account: user id: %w", err)
 	}
-	profile := Profile{ID: id.String(), Email: user.Email, Role: user.Role, Name: user.Name}
+	profile := Profile{ID: id.String(), Email: user.Email, Role: user.Role, Name: user.Name, EmailVerified: user.EmailVerifiedAt.Valid}
 	if user.AvatarUrl.Valid {
 		profile.AvatarURL = user.AvatarUrl.String
 	}
