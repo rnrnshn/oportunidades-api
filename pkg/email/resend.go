@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -18,8 +19,15 @@ type VerificationMessage struct {
 	VerificationURL string
 }
 
+type PasswordResetMessage struct {
+	To            string
+	RecipientName string
+	ResetURL      string
+}
+
 type Sender interface {
 	SendVerificationEmail(ctx context.Context, message VerificationMessage) error
+	SendPasswordResetEmail(ctx context.Context, message PasswordResetMessage) error
 }
 
 type ResendSender struct {
@@ -39,33 +47,52 @@ func NewResendSender(apiKey string, from string) *ResendSender {
 }
 
 func (s *ResendSender) SendVerificationEmail(ctx context.Context, message VerificationMessage) error {
+	if strings.TrimSpace(message.VerificationURL) == "" {
+		return fmt.Errorf("email: verification url is required")
+	}
+	content := actionEmail{
+		Greeting:   greeting(message.RecipientName),
+		Intro:      "Confirma o teu email para activares a tua conta no Oportunidades.",
+		ButtonText: "Verificar email",
+		URL:        message.VerificationURL,
+		Outro:      "Se não criaste esta conta, podes ignorar esta mensagem.",
+	}
+	return s.send(ctx, message.To, "Verifica o teu email no Oportunidades", content)
+}
+
+func (s *ResendSender) SendPasswordResetEmail(ctx context.Context, message PasswordResetMessage) error {
+	if strings.TrimSpace(message.ResetURL) == "" {
+		return fmt.Errorf("email: reset url is required")
+	}
+	content := actionEmail{
+		Greeting:   greeting(message.RecipientName),
+		Intro:      "Recebemos um pedido para redefinir a password da tua conta no Oportunidades.",
+		ButtonText: "Redefinir password",
+		URL:        message.ResetURL,
+		Outro:      "Se não fizeste este pedido, ignora esta mensagem. A tua password continua igual.",
+	}
+	return s.send(ctx, message.To, "Redefine a tua password no Oportunidades", content)
+}
+
+func (s *ResendSender) send(ctx context.Context, to string, subject string, content actionEmail) error {
 	if s == nil || s.apiKey == "" {
 		return fmt.Errorf("email: resend api key is not configured")
 	}
 	if s.from == "" {
 		return fmt.Errorf("email: from address is not configured")
 	}
-	if strings.TrimSpace(message.To) == "" {
+	to = strings.TrimSpace(to)
+	if to == "" {
 		return fmt.Errorf("email: recipient is required")
 	}
-	if strings.TrimSpace(message.VerificationURL) == "" {
-		return fmt.Errorf("email: verification url is required")
-	}
 
-	recipientName := strings.TrimSpace(message.RecipientName)
-	if recipientName == "" {
-		recipientName = ""
-	}
-
-	payload := map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"from":    s.from,
-		"to":      []string{strings.TrimSpace(message.To)},
-		"subject": "Verifica o teu email no Oportunidades",
-		"html":    verificationHTML(recipientName, message.VerificationURL),
-		"text":    verificationText(recipientName, message.VerificationURL),
-	}
-
-	body, err := json.Marshal(payload)
+		"to":      []string{to},
+		"subject": subject,
+		"html":    content.HTML(),
+		"text":    content.Text(),
+	})
 	if err != nil {
 		return fmt.Errorf("email: marshal resend payload: %w", err)
 	}
@@ -90,25 +117,37 @@ func (s *ResendSender) SendVerificationEmail(ctx context.Context, message Verifi
 	return nil
 }
 
-func verificationHTML(recipientName string, verificationURL string) string {
-	greeting := "Ola,"
-	if recipientName != "" {
-		greeting = fmt.Sprintf("Ola %s,", recipientName)
-	}
-
-	return fmt.Sprintf(`<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-	<p>%s</p>
-	<p>Confirma o teu email para activares a tua conta no Oportunidades.</p>
-	<p><a href="%s">Verificar email</a></p>
-	<p>Se nao criaste esta conta, podes ignorar esta mensagem.</p>
-	</div>`, greeting, verificationURL)
+type actionEmail struct {
+	Greeting   string
+	Intro      string
+	ButtonText string
+	URL        string
+	Outro      string
 }
 
-func verificationText(recipientName string, verificationURL string) string {
-	greeting := "Ola,"
-	if recipientName != "" {
-		greeting = fmt.Sprintf("Ola %s,", recipientName)
+func greeting(recipientName string) string {
+	name := strings.TrimSpace(recipientName)
+	if name == "" {
+		return "Olá,"
 	}
+	return fmt.Sprintf("Olá %s,", name)
+}
 
-	return fmt.Sprintf("%s\n\nConfirma o teu email para activares a tua conta no Oportunidades.\n\nVerificar email: %s\n\nSe nao criaste esta conta, podes ignorar esta mensagem.\n", greeting, verificationURL)
+func (e actionEmail) HTML() string {
+	return fmt.Sprintf(`<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+	<p>%s</p>
+	<p>%s</p>
+	<p><a href="%s">%s</a></p>
+	<p>%s</p>
+	</div>`,
+		html.EscapeString(e.Greeting),
+		html.EscapeString(e.Intro),
+		html.EscapeString(e.URL),
+		html.EscapeString(e.ButtonText),
+		html.EscapeString(e.Outro),
+	)
+}
+
+func (e actionEmail) Text() string {
+	return fmt.Sprintf("%s\n\n%s\n\n%s: %s\n\n%s\n", e.Greeting, e.Intro, e.ButtonText, e.URL, e.Outro)
 }

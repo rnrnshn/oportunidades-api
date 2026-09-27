@@ -65,7 +65,7 @@ func main() {
 	app.Use(appmiddleware.SecurityHeaders())
 	app.Use(appmiddleware.CORS(getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")))
 
-	registerRoutes(app, pool)
+	registerRoutes(app, pool, log)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		ctx, cancel := context.WithTimeout(c.UserContext(), 2*time.Second)
@@ -119,9 +119,12 @@ func getEnv(key string, fallback string) string {
 	return value
 }
 
-func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
+func registerRoutes(app *fiber.App, pool *pgxpool.Pool, log zerolog.Logger) {
 	authRepository := appauth.NewPostgresRepository(pool)
-	emailSender := appemail.NewResendSender(getEnv("RESEND_API_KEY", ""), getEnv("EMAIL_FROM", ""))
+	var emailSender appemail.Sender
+	if resendAPIKey := getEnv("RESEND_API_KEY", ""); resendAPIKey != "" {
+		emailSender = appemail.NewResendSender(resendAPIKey, getEnv("EMAIL_FROM", ""))
+	}
 	authService := appauth.NewService(authRepository, appauth.Config{
 		JWTSecret:             getEnv("JWT_SECRET", "change-me"),
 		JWTExpiry:             time.Duration(getEnvAsInt("JWT_EXPIRY_MINUTES", 15)) * time.Minute,
@@ -132,6 +135,7 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 		ExposeDebugTokens:     !strings.EqualFold(getEnv("ENV", "development"), "production"),
 		EmailSender:           emailSender,
 		AppPublicURL:          getEnv("APP_PUBLIC_URL", "http://localhost:3000"),
+		Logger:                &log,
 	})
 	authHandler := appauth.NewHandler(authService)
 	accountRepository := appaccount.NewPostgresRepository(pool)

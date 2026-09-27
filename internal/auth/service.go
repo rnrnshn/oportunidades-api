@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
@@ -39,6 +40,7 @@ type Service struct {
 	exposeDebugTokens     bool
 	emailSender           appemail.Sender
 	appPublicURL          string
+	logger                zerolog.Logger
 }
 
 type Config struct {
@@ -51,6 +53,7 @@ type Config struct {
 	ExposeDebugTokens     bool
 	EmailSender           appemail.Sender
 	AppPublicURL          string
+	Logger                *zerolog.Logger
 }
 
 type RegisterInput struct {
@@ -98,7 +101,12 @@ type Claims struct {
 }
 
 func NewService(repo Repository, config Config) *Service {
+	logger := zerolog.Nop()
+	if config.Logger != nil {
+		logger = *config.Logger
+	}
 	return &Service{
+		logger:                logger,
 		repo:                  repo,
 		jwtSecret:             []byte(config.JWTSecret),
 		jwtExpiry:             config.JWTExpiry,
@@ -132,6 +140,10 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*AuthResul
 		}
 
 		return nil, fmt.Errorf("auth: create user: %w", err)
+	}
+
+	if err := s.startEmailVerification(ctx, user); err != nil {
+		s.logger.Warn().Err(err).Msg("signup verification email not sent")
 	}
 
 	return s.issueTokens(ctx, user)
@@ -228,6 +240,9 @@ func (s *Service) ForgotPassword(ctx context.Context, input ForgotPasswordInput)
 	}
 	rawToken, err := s.createActionToken(ctx, user.ID, purposePasswordReset)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.sendPasswordResetEmail(ctx, user.Email, user.Name, rawToken); err != nil {
 		return nil, err
 	}
 	result := &ActionResult{Message: "Se existir uma conta com este email, enviámos instruções para redefinir a password."}
@@ -467,7 +482,40 @@ func (s *Service) sendVerificationEmail(ctx context.Context, recipientEmail stri
 	return nil
 }
 
+func (s *Service) startEmailVerification(ctx context.Context, user queries.User) error {
+	if s.emailSender == nil {
+		return nil
+	}
+	rawToken, err := s.createActionToken(ctx, user.ID, purposeEmailVerification)
+	if err != nil {
+		return err
+	}
+	return s.sendVerificationEmail(ctx, user.Email, user.Name, rawToken)
+}
+
+func (s *Service) sendPasswordResetEmail(ctx context.Context, recipientEmail string, recipientName string, token string) error {
+	if s.emailSender == nil {
+		return nil
+	}
+	resetURL, err := s.publicURL("/auth/reset-password", token)
+	if err != nil {
+		return fmt.Errorf("auth: build reset url: %w", err)
+	}
+	if err := s.emailSender.SendPasswordResetEmail(ctx, appemail.PasswordResetMessage{
+		To:            recipientEmail,
+		RecipientName: recipientName,
+		ResetURL:      resetURL,
+	}); err != nil {
+		return fmt.Errorf("auth: send password reset email: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) verificationURL(token string) (string, error) {
+	return s.publicURL("/auth/verify-email", token)
+}
+
+func (s *Service) publicURL(path string, token string) (string, error) {
 	baseURL := strings.TrimSpace(s.appPublicURL)
 	if baseURL == "" {
 		return "", fmt.Errorf("app public url is not configured")
@@ -476,7 +524,7 @@ func (s *Service) verificationURL(token string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid app public url: %w", err)
 	}
-	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") + "/auth/verify-email"
+	parsedURL.Path = strings.TrimRight(parsedURL.Path, "/") + path
 	query := parsedURL.Query()
 	query.Set("token", token)
 	parsedURL.RawQuery = query.Encode()

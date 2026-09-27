@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +15,15 @@ import (
 )
 
 type mockEmailSender struct {
-	sendVerificationEmailFn func(context.Context, appemail.VerificationMessage) error
+	sendVerificationEmailFn  func(context.Context, appemail.VerificationMessage) error
+	sendPasswordResetEmailFn func(context.Context, appemail.PasswordResetMessage) error
+}
+
+func (m mockEmailSender) SendPasswordResetEmail(ctx context.Context, message appemail.PasswordResetMessage) error {
+	if m.sendPasswordResetEmailFn == nil {
+		return nil
+	}
+	return m.sendPasswordResetEmailFn(ctx, message)
 }
 
 func (m mockEmailSender) SendVerificationEmail(ctx context.Context, message appemail.VerificationMessage) error {
@@ -272,6 +281,108 @@ func TestServiceForgotPasswordReturnsDebugTokenForExistingUser(t *testing.T) {
 	}
 	if result.DebugToken == "" {
 		t.Fatal("expected debug token")
+	}
+}
+
+func TestServiceForgotPasswordSendsResetEmail(t *testing.T) {
+	userID := uuid.New()
+	var sent appemail.PasswordResetMessage
+	service := NewService(&mockRepository{
+		getUserByEmailFn: func(context.Context, string) (queries.User, error) {
+			return queries.User{ID: uuidToPg(userID), Email: "user@example.com", Name: "User"}, nil
+		},
+		createAuthActionTokenFn: func(context.Context, queries.CreateAuthActionTokenParams) (queries.AuthActionToken, error) {
+			return queries.AuthActionToken{}, nil
+		},
+	}, Config{
+		JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, AuthActionTokenExpiry: 24 * time.Hour, RefreshCookieName: "refresh_token",
+		AppPublicURL: "https://oportunidades.social",
+		EmailSender: mockEmailSender{sendPasswordResetEmailFn: func(_ context.Context, message appemail.PasswordResetMessage) error {
+			sent = message
+			return nil
+		}},
+	})
+
+	result, err := service.ForgotPassword(context.Background(), ForgotPasswordInput{Email: "user@example.com"})
+	if err != nil {
+		t.Fatalf("forgot password returned error: %v", err)
+	}
+	if sent.To != "user@example.com" || !strings.HasPrefix(sent.ResetURL, "https://oportunidades.social/auth/reset-password?token=") {
+		t.Fatalf("unexpected reset email: %+v", sent)
+	}
+	if result.DebugToken != "" {
+		t.Fatal("debug token must not be exposed when disabled")
+	}
+}
+
+func TestServiceForgotPasswordUnknownEmailSendsNothing(t *testing.T) {
+	service := NewService(&mockRepository{
+		getUserByEmailFn: func(context.Context, string) (queries.User, error) {
+			return queries.User{}, ErrNotFound
+		},
+	}, Config{
+		JWTSecret: "secret", AppPublicURL: "https://oportunidades.social",
+		EmailSender: mockEmailSender{sendPasswordResetEmailFn: func(context.Context, appemail.PasswordResetMessage) error {
+			t.Fatal("no email should be sent for an unknown address")
+			return nil
+		}},
+	})
+
+	result, err := service.ForgotPassword(context.Background(), ForgotPasswordInput{Email: "nobody@example.com"})
+	if err != nil {
+		t.Fatalf("forgot password returned error: %v", err)
+	}
+	if result.Message == "" {
+		t.Fatal("expected the same generic message as for existing accounts")
+	}
+}
+
+func registerTestService(t *testing.T, sender appemail.Sender) *Service {
+	t.Helper()
+	userID := uuid.New()
+	return NewService(&mockRepository{
+		createUserFn: func(_ context.Context, params queries.CreateUserParams) (queries.User, error) {
+			return queries.User{ID: uuidToPg(userID), Email: params.Email, Name: params.Name, Role: params.Role}, nil
+		},
+		createAuthActionTokenFn: func(context.Context, queries.CreateAuthActionTokenParams) (queries.AuthActionToken, error) {
+			return queries.AuthActionToken{}, nil
+		},
+		createRefreshTokenFn: func(context.Context, queries.CreateRefreshTokenParams) (queries.RefreshToken, error) {
+			return queries.RefreshToken{}, nil
+		},
+	}, Config{
+		JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: 30 * 24 * time.Hour, AuthActionTokenExpiry: 24 * time.Hour, RefreshCookieName: "refresh_token",
+		AppPublicURL: "https://oportunidades.social",
+		EmailSender:  sender,
+	})
+}
+
+func TestServiceRegisterSendsVerificationEmail(t *testing.T) {
+	var sent appemail.VerificationMessage
+	service := registerTestService(t, mockEmailSender{sendVerificationEmailFn: func(_ context.Context, message appemail.VerificationMessage) error {
+		sent = message
+		return nil
+	}})
+
+	if _, err := service.Register(context.Background(), RegisterInput{Email: "new@example.com", Password: "password123", Name: "Nova"}); err != nil {
+		t.Fatalf("register returned error: %v", err)
+	}
+	if sent.To != "new@example.com" || !strings.HasPrefix(sent.VerificationURL, "https://oportunidades.social/auth/verify-email?token=") {
+		t.Fatalf("unexpected verification email: %+v", sent)
+	}
+}
+
+func TestServiceRegisterSucceedsWhenEmailFails(t *testing.T) {
+	service := registerTestService(t, mockEmailSender{sendVerificationEmailFn: func(context.Context, appemail.VerificationMessage) error {
+		return errors.New("resend unavailable")
+	}})
+
+	result, err := service.Register(context.Background(), RegisterInput{Email: "new@example.com", Password: "password123", Name: "Nova"})
+	if err != nil {
+		t.Fatalf("register must not fail when the email fails: %v", err)
+	}
+	if result.AccessToken == "" {
+		t.Fatal("expected tokens to be issued")
 	}
 }
 

@@ -10,6 +10,8 @@ func TestValidateProductionConfig(t *testing.T) {
 		"JWT_SECRET":      strings.Repeat("s", 32),
 		"ALLOWED_ORIGINS": "https://oportunidades.social,https://admin.oportunidades.social",
 		"APP_PUBLIC_URL":  "https://oportunidades.social",
+		"RESEND_API_KEY":  "re_test",
+		"EMAIL_FROM":      "Oportunidades <noreply@oportunidades.social>",
 	}
 
 	cases := map[string]struct {
@@ -23,6 +25,8 @@ func TestValidateProductionConfig(t *testing.T) {
 		"missing origins":    {override: map[string]string{"ALLOWED_ORIGINS": ""}, wantErr: "ALLOWED_ORIGINS"},
 		"wildcard origins":   {override: map[string]string{"ALLOWED_ORIGINS": "*"}, wantErr: "ALLOWED_ORIGINS"},
 		"missing public url": {override: map[string]string{"APP_PUBLIC_URL": ""}, wantErr: "APP_PUBLIC_URL"},
+		"missing resend key": {override: map[string]string{"RESEND_API_KEY": ""}, wantErr: "RESEND_API_KEY"},
+		"missing email from": {override: map[string]string{"EMAIL_FROM": ""}, wantErr: "EMAIL_FROM"},
 	}
 
 	for name, tc := range cases {

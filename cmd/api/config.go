@@ -24,8 +24,10 @@ func validateProductionConfig(lookup func(string) string) error {
 		problems = append(problems, "ALLOWED_ORIGINS must list explicit origins")
 	}
 
-	if strings.TrimSpace(lookup("APP_PUBLIC_URL")) == "" {
-		problems = append(problems, "APP_PUBLIC_URL is required")
+	for _, key := range []string{"APP_PUBLIC_URL", "RESEND_API_KEY", "EMAIL_FROM"} {
+		if strings.TrimSpace(lookup(key)) == "" {
+			problems = append(problems, key+" is required")
+		}
 	}
 
 	if len(problems) > 0 {
