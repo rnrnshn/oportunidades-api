@@ -31,10 +31,10 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 		Page:    queryInt(c, "page", defaultPage),
 		PerPage: queryInt(c, "per_page", defaultPerPage),
 	}, Filters{
-		Query:    strings.TrimSpace(c.Query("q")),
-		Type:     strings.TrimSpace(c.Query("type")),
-		Area:     strings.TrimSpace(c.Query("area")),
-		Country:  strings.TrimSpace(c.Query("country")),
+		Query:   strings.TrimSpace(c.Query("q")),
+		Type:    strings.TrimSpace(c.Query("type")),
+		Area:    strings.TrimSpace(c.Query("area")),
+		Country: strings.TrimSpace(c.Query("country")),
 	})
 	if err != nil {
 		return handleError(err)
@@ -65,7 +65,6 @@ func queryInt(c *fiber.Ctx, key string, fallback int) int {
 
 	return value
 }
-
 
 func handleError(err error) error {
 	if errors.Is(err, ErrNotFound) {

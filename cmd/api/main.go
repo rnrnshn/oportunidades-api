@@ -33,6 +33,12 @@ import (
 func main() {
 	log := newLogger()
 
+	if isProduction(getEnv("ENV", "development")) {
+		if err := validateProductionConfig(os.Getenv); err != nil {
+			log.Fatal().Err(err).Msg("refusing to start")
+		}
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -46,10 +52,12 @@ func main() {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: apierror.Handler,
 		AppName:      "oportunidades-api",
+		BodyLimit:    2 * 1024 * 1024,
 	})
 
 	app.Use(appmiddleware.Logger(log))
 	app.Use(appmiddleware.Recover())
+	app.Use(appmiddleware.SecurityHeaders())
 	app.Use(appmiddleware.CORS(getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")))
 
 	registerRoutes(app, pool)

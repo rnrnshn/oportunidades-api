@@ -9,14 +9,16 @@ import (
 
 func CORS(allowedOrigins string) fiber.Handler {
 	origins := strings.TrimSpace(allowedOrigins)
-	if origins == "" {
+	wildcard := origins == "" || strings.Contains(origins, "*")
+	if wildcard {
 		origins = "*"
 	}
 
 	return corsmw.New(corsmw.Config{
 		AllowOrigins: origins,
-		AllowCredentials: true,
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		// Browsers reject credentialed responses for "*", and allowing them would let any site use a visitor's session.
+		AllowCredentials: !wildcard,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 	})
 }
