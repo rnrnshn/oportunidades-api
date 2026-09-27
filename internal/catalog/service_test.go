@@ -112,6 +112,44 @@ func TestGetUniversityBySlugNotFound(t *testing.T) {
 	}
 }
 
+func TestGetUniversityBySlugHidesUnverified(t *testing.T) {
+	service := NewService(&mockRepository{
+		getUniversityBySlugFn: func(context.Context, string) (queries.University, error) {
+			return queries.University{Slug: "pending", Verified: false}, nil
+		},
+	})
+
+	_, err := service.GetUniversityBySlug(context.Background(), "pending")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected not found error, got %v", err)
+	}
+}
+
+func TestListUniversitiesForcesVerifiedFilter(t *testing.T) {
+	notVerified := false
+	var listFilters, countFilters UniversityFilters
+	service := NewService(&mockRepository{
+		listUniversitiesFn: func(_ context.Context, _ queries.ListUniversitiesParams, filters UniversityFilters) ([]queries.University, error) {
+			listFilters = filters
+			return nil, nil
+		},
+		countUniversitiesFn: func(_ context.Context, filters UniversityFilters) (int64, error) {
+			countFilters = filters
+			return 0, nil
+		},
+	})
+
+	if _, err := service.ListUniversities(context.Background(), PaginationParams{}, UniversityFilters{Verified: &notVerified}); err != nil {
+		t.Fatalf("list universities returned error: %v", err)
+	}
+
+	for name, filters := range map[string]UniversityFilters{"list": listFilters, "count": countFilters} {
+		if filters.Verified == nil || !*filters.Verified {
+			t.Fatalf("%s: expected verified filter forced to true, got %+v", name, filters)
+		}
+	}
+}
+
 func TestListCourses(t *testing.T) {
 	courseID := uuid.New()
 	universityID := uuid.New()

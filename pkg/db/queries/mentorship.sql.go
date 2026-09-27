@@ -42,6 +42,20 @@ func (q *Queries) CountMentorshipSessionsForUser(ctx context.Context, mentorID p
 	return count, err
 }
 
+const countPendingMentorshipSessions = `-- name: CountPendingMentorshipSessions :one
+SELECT COUNT(*)
+FROM mentorship_sessions
+WHERE status = 'pending'
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) CountPendingMentorshipSessions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingMentorshipSessions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createMentorshipSession = `-- name: CreateMentorshipSession :one
 INSERT INTO mentorship_sessions (
   mentor_id,

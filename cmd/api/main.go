@@ -194,6 +194,8 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 	adminGroup.Post("/opportunities/:id/verify", adminHandler.VerifyOpportunity)
 	adminGroup.Post("/opportunities/:id/reject", adminHandler.RejectOpportunity)
 	adminGroup.Post("/opportunities/:id/deactivate", adminHandler.DeactivateOpportunity)
+	adminGroup.Post("/universities/:id/verify", adminHandler.VerifyUniversity)
+	adminGroup.Post("/universities/:id/unverify", adminHandler.UnverifyUniversity)
 	adminGroup.Get("/reports", adminHandler.ListReports)
 	adminGroup.Get("/reports/:id", adminHandler.GetReport)
 	adminGroup.Patch("/reports/:id", adminHandler.UpdateReportStatus)

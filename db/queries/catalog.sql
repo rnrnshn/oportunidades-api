@@ -22,6 +22,15 @@ FROM universities
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: SetUniversityVerified :one
+UPDATE universities
+SET
+  verified = sqlc.arg(verified)::boolean,
+  verified_at = CASE WHEN sqlc.arg(verified)::boolean THEN now() ELSE NULL END
+WHERE id = sqlc.arg(id)
+  AND deleted_at IS NULL
+RETURNING *;
+
 -- name: ListCMSUniversities :many
 SELECT *
 FROM universities

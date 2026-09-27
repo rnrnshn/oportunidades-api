@@ -27,6 +27,11 @@ type mockRepository struct {
 	countReportsFn          func(context.Context, ReportListFilters) (int64, error)
 	getReportByIDFn         func(context.Context, pgtype.UUID) (queries.Report, error)
 	updateReportStatusFn    func(context.Context, queries.UpdateReportStatusParams) (queries.Report, error)
+	setUniversityVerifiedFn func(context.Context, queries.SetUniversityVerifiedParams) (queries.University, error)
+}
+
+func (m *mockRepository) SetUniversityVerified(ctx context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error) {
+	return m.setUniversityVerifiedFn(ctx, params)
 }
 
 func (m *mockRepository) GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error) {
@@ -116,6 +121,57 @@ func TestHandlerVerifyOpportunityNotFound(t *testing.T) {
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
 	app.Post("/v1/admin/opportunities/:id/verify", handler.VerifyOpportunity)
 	req := httptest.NewRequest(http.MethodPost, "/v1/admin/opportunities/"+uuid.NewString()+"/verify", nil)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerUniversityVerification(t *testing.T) {
+	universityID := uuid.New()
+	cases := []struct {
+		action   string
+		verified bool
+	}{{"verify", true}, {"unverify", false}}
+	for _, tc := range cases {
+		t.Run(tc.action, func(t *testing.T) {
+			var got queries.SetUniversityVerifiedParams
+			handler := NewHandler(NewService(&mockRepository{
+				setUniversityVerifiedFn: func(_ context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error) {
+					got = params
+					return queries.University{ID: params.ID, Slug: "uem", Name: "UEM", Verified: params.Verified}, nil
+				},
+			}))
+			app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+			app.Post("/v1/admin/universities/:id/verify", handler.VerifyUniversity)
+			app.Post("/v1/admin/universities/:id/unverify", handler.UnverifyUniversity)
+			req := httptest.NewRequest(http.MethodPost, "/v1/admin/universities/"+universityID.String()+"/"+tc.action, nil)
+			res, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			if res.StatusCode != http.StatusOK {
+				t.Fatalf("expected 200, got %d", res.StatusCode)
+			}
+			if got.Verified != tc.verified || got.ID.Bytes != [16]byte(universityID) {
+				t.Fatalf("unexpected params: %+v", got)
+			}
+		})
+	}
+}
+
+func TestHandlerVerifyUniversityNotFound(t *testing.T) {
+	handler := NewHandler(NewService(&mockRepository{
+		setUniversityVerifiedFn: func(context.Context, queries.SetUniversityVerifiedParams) (queries.University, error) {
+			return queries.University{}, ErrNotFound
+		},
+	}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Post("/v1/admin/universities/:id/verify", handler.VerifyUniversity)
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/universities/"+uuid.NewString()+"/verify", nil)
 	res, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)

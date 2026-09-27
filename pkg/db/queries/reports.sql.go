@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPendingReports = `-- name: CountPendingReports :one
+SELECT COUNT(*)
+FROM reports
+WHERE status = 'pending'
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) CountPendingReports(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingReports)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countReports = `-- name: CountReports :one
 SELECT COUNT(*)
 FROM reports
@@ -104,6 +118,48 @@ func (q *Queries) GetReportByID(ctx context.Context, id pgtype.UUID) (Report, er
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listRecentPendingReports = `-- name: ListRecentPendingReports :many
+SELECT id, reporter_id, entity_type, entity_id, reason, status, reviewed_by, moderation_notes, resolved_at, created_at, updated_at, deleted_at
+FROM reports
+WHERE status = 'pending'
+  AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT 5
+`
+
+func (q *Queries) ListRecentPendingReports(ctx context.Context) ([]Report, error) {
+	rows, err := q.db.Query(ctx, listRecentPendingReports)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Report{}
+	for rows.Next() {
+		var i Report
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReporterID,
+			&i.EntityType,
+			&i.EntityID,
+			&i.Reason,
+			&i.Status,
+			&i.ReviewedBy,
+			&i.ModerationNotes,
+			&i.ResolvedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listReports = `-- name: ListReports :many

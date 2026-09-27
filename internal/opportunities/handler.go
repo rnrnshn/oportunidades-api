@@ -24,8 +24,6 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
 	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
 	validationErrors.Enum("type", c.Query("type"), []string{"bolsa", "estagio", "emprego", "intercambio", "workshop", "competicao"}, "type inválido.")
-	validationErrors.Bool("active", c.Query("active"), "active deve ser true ou false.")
-	validationErrors.Bool("verified", c.Query("verified"), "verified deve ser true ou false.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
 	}
@@ -37,8 +35,6 @@ func (h *Handler) ListOpportunities(c *fiber.Ctx) error {
 		Type:     strings.TrimSpace(c.Query("type")),
 		Area:     strings.TrimSpace(c.Query("area")),
 		Country:  strings.TrimSpace(c.Query("country")),
-		Active:   queryBool(c, "active"),
-		Verified: queryBool(c, "verified"),
 	})
 	if err != nil {
 		return handleError(err)
@@ -70,23 +66,6 @@ func queryInt(c *fiber.Ctx, key string, fallback int) int {
 	return value
 }
 
-func queryBool(c *fiber.Ctx, key string) *bool {
-	rawValue := strings.TrimSpace(strings.ToLower(c.Query(key)))
-	if rawValue == "" {
-		return nil
-	}
-
-	if rawValue == "true" {
-		value := true
-		return &value
-	}
-	if rawValue == "false" {
-		value := false
-		return &value
-	}
-
-	return nil
-}
 
 func handleError(err error) error {
 	if errors.Is(err, ErrNotFound) {

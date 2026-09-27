@@ -824,6 +824,55 @@ func (q *Queries) ListUniversityScholarshipsByUniversityID(ctx context.Context, 
 	return items, nil
 }
 
+const setUniversityVerified = `-- name: SetUniversityVerified :one
+UPDATE universities
+SET
+  verified = $1::boolean,
+  verified_at = CASE WHEN $1::boolean THEN now() ELSE NULL END
+WHERE id = $2
+  AND deleted_at IS NULL
+RETURNING id, slug, name, type, province, city, country, description, logo_url, campus_image_url, website, email, phone, founded_year, address, map_url, academic_calendar, student_count, admissions_deadline, tags, verified, verified_at, created_by, created_at, updated_at, deleted_at
+`
+
+type SetUniversityVerifiedParams struct {
+	Verified bool        `json:"verified"`
+	ID       pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetUniversityVerified(ctx context.Context, arg SetUniversityVerifiedParams) (University, error) {
+	row := q.db.QueryRow(ctx, setUniversityVerified, arg.Verified, arg.ID)
+	var i University
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Type,
+		&i.Province,
+		&i.City,
+		&i.Country,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CampusImageUrl,
+		&i.Website,
+		&i.Email,
+		&i.Phone,
+		&i.FoundedYear,
+		&i.Address,
+		&i.MapUrl,
+		&i.AcademicCalendar,
+		&i.StudentCount,
+		&i.AdmissionsDeadline,
+		&i.Tags,
+		&i.Verified,
+		&i.VerifiedAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const softDeleteUniversityFeesByUniversityID = `-- name: SoftDeleteUniversityFeesByUniversityID :exec
 UPDATE university_fees
 SET deleted_at = NOW()

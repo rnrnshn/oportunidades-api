@@ -24,7 +24,6 @@ func (h *Handler) ListUniversities(c *fiber.Ctx) error {
 	validationErrors.IntRange("page", c.Query("page"), 1, 100000, "page deve ser um inteiro >= 1.")
 	validationErrors.IntRange("per_page", c.Query("per_page"), 1, 100, "per_page deve estar entre 1 e 100.")
 	validationErrors.Enum("type", c.Query("type"), []string{"publica", "privada", "instituto", "academia"}, "type deve ser publica, privada, instituto ou academia.")
-	validationErrors.Bool("verified", c.Query("verified"), "verified deve ser true ou false.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Parâmetros de pesquisa inválidos.", validationErrors.Details())
 	}
@@ -35,7 +34,6 @@ func (h *Handler) ListUniversities(c *fiber.Ctx) error {
 		Query:    strings.TrimSpace(c.Query("q")),
 		Province: strings.TrimSpace(c.Query("province")),
 		Type:     strings.TrimSpace(c.Query("type")),
-		Verified: queryBool(c, "verified"),
 	})
 	if err != nil {
 		return handleError(err)
@@ -102,24 +100,6 @@ func queryInt(c *fiber.Ctx, key string, fallback int) int {
 	}
 
 	return value
-}
-
-func queryBool(c *fiber.Ctx, key string) *bool {
-	rawValue := strings.TrimSpace(strings.ToLower(c.Query(key)))
-	if rawValue == "" {
-		return nil
-	}
-
-	if rawValue == "true" {
-		value := true
-		return &value
-	}
-	if rawValue == "false" {
-		value := false
-		return &value
-	}
-
-	return nil
 }
 
 func handleError(err error) error {

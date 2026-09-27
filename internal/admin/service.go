@@ -26,6 +26,9 @@ type ArticleResult struct {
 type OpportunityResult struct {
 	Data OpportunityItem `json:"data"`
 }
+type UniversityResult struct {
+	Data UniversityItem `json:"data"`
+}
 
 type DashboardCounts struct {
 	Articles              int64 `json:"articles"`
@@ -99,6 +102,13 @@ type OpportunityItem struct {
 	Title    string `json:"title"`
 	Verified bool   `json:"verified"`
 	IsActive bool   `json:"is_active"`
+}
+
+type UniversityItem struct {
+	ID       string `json:"id"`
+	Slug     string `json:"slug"`
+	Name     string `json:"name"`
+	Verified bool   `json:"verified"`
 }
 
 type ReportItem struct {
@@ -285,6 +295,22 @@ func (s *Service) DeactivateOpportunity(ctx context.Context, opportunityID strin
 	return &OpportunityResult{Data: mapped}, nil
 }
 
+func (s *Service) SetUniversityVerified(ctx context.Context, universityID string, verified bool) (*UniversityResult, error) {
+	id, err := parseID(universityID)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	item, err := s.repo.SetUniversityVerified(ctx, queries.SetUniversityVerifiedParams{ID: id, Verified: verified})
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := mapUniversity(item)
+	if err != nil {
+		return nil, err
+	}
+	return &UniversityResult{Data: mapped}, nil
+}
+
 func (s *Service) ListReports(ctx context.Context, params PaginationParams, filters ReportListFilters) (*ReportsResult, error) {
 	page, perPage := normalizePagination(params)
 	totalBeforeFilter, err := s.repo.CountReports(ctx, filters)
@@ -420,6 +446,14 @@ func mapOpportunity(opportunity queries.Opportunity) (OpportunityItem, error) {
 		return OpportunityItem{}, fmt.Errorf("admin: opportunity id: %w", err)
 	}
 	return OpportunityItem{ID: id.String(), Slug: opportunity.Slug, Title: opportunity.Title, Verified: opportunity.Verified, IsActive: opportunity.IsActive}, nil
+}
+
+func mapUniversity(university queries.University) (UniversityItem, error) {
+	id, err := uuidFromPg(university.ID)
+	if err != nil {
+		return UniversityItem{}, fmt.Errorf("admin: university id: %w", err)
+	}
+	return UniversityItem{ID: id.String(), Slug: university.Slug, Name: university.Name, Verified: university.Verified}, nil
 }
 
 func mapReport(report queries.Report) (ReportItem, error) {

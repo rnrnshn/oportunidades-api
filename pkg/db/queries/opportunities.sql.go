@@ -465,6 +465,67 @@ func (q *Queries) ListOpportunities(ctx context.Context, arg ListOpportunitiesPa
 	return items, nil
 }
 
+const listRecentUnverifiedOpportunities = `-- name: ListRecentUnverifiedOpportunities :many
+SELECT id, slug, title, type, entity_name, description, requirements, deadline, apply_url, external_url_label, country, location, is_remote, language, area, hero_image_url, provider_logo_url, amount_min, amount_max, amount_currency, coverage, eligibility, application_process, degree_level, program_area, is_active, published_by, verified, created_at, updated_at, deleted_at
+FROM opportunities
+WHERE verified = FALSE
+  AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT 5
+`
+
+func (q *Queries) ListRecentUnverifiedOpportunities(ctx context.Context) ([]Opportunity, error) {
+	rows, err := q.db.Query(ctx, listRecentUnverifiedOpportunities)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Opportunity{}
+	for rows.Next() {
+		var i Opportunity
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Type,
+			&i.EntityName,
+			&i.Description,
+			&i.Requirements,
+			&i.Deadline,
+			&i.ApplyUrl,
+			&i.ExternalUrlLabel,
+			&i.Country,
+			&i.Location,
+			&i.IsRemote,
+			&i.Language,
+			&i.Area,
+			&i.HeroImageUrl,
+			&i.ProviderLogoUrl,
+			&i.AmountMin,
+			&i.AmountMax,
+			&i.AmountCurrency,
+			&i.Coverage,
+			&i.Eligibility,
+			&i.ApplicationProcess,
+			&i.DegreeLevel,
+			&i.ProgramArea,
+			&i.IsActive,
+			&i.PublishedBy,
+			&i.Verified,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const rejectOpportunity = `-- name: RejectOpportunity :one
 UPDATE opportunities
 SET

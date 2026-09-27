@@ -19,6 +19,7 @@ type Repository interface {
 	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error)
 	RejectOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error)
 	DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error)
+	SetUniversityVerified(ctx context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error)
 	ListReports(ctx context.Context, params queries.ListReportsParams, filters ReportListFilters) ([]queries.Report, error)
 	CountReports(ctx context.Context, filters ReportListFilters) (int64, error)
 	GetReportByID(ctx context.Context, id pgtype.UUID) (queries.Report, error)

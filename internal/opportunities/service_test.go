@@ -90,6 +90,8 @@ func TestGetOpportunityBySlug(t *testing.T) {
 				Description: "Descricao",
 				Country:     "Mozambique",
 				Deadline:    pgtype.Timestamptz{Time: time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC), Valid: true},
+				IsActive:    true,
+				Verified:    true,
 			}, nil
 		},
 	})
@@ -101,6 +103,53 @@ func TestGetOpportunityBySlug(t *testing.T) {
 
 	if result.Data.Deadline == "" {
 		t.Fatal("expected deadline to be mapped")
+	}
+}
+
+func TestGetOpportunityBySlugHidesUnpublished(t *testing.T) {
+	cases := map[string]queries.Opportunity{
+		"inactive":   {IsActive: false, Verified: true},
+		"unverified": {IsActive: true, Verified: false},
+	}
+	for name, item := range cases {
+		t.Run(name, func(t *testing.T) {
+			service := NewService(&mockRepository{
+				getOpportunityBySlugFn: func(context.Context, string) (queries.Opportunity, error) {
+					return item, nil
+				},
+			})
+
+			_, err := service.GetOpportunityBySlug(context.Background(), "hidden")
+			if !errors.Is(err, ErrNotFound) {
+				t.Fatalf("expected not found error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestListOpportunitiesForcesPublishedFilters(t *testing.T) {
+	notPublished := false
+	var listFilters, countFilters Filters
+	service := NewService(&mockRepository{
+		listOpportunitiesFn: func(_ context.Context, _ queries.ListOpportunitiesParams, filters Filters) ([]queries.Opportunity, error) {
+			listFilters = filters
+			return nil, nil
+		},
+		countOpportunitiesFn: func(_ context.Context, filters Filters) (int64, error) {
+			countFilters = filters
+			return 0, nil
+		},
+	})
+
+	_, err := service.ListOpportunities(context.Background(), PaginationParams{}, Filters{Active: &notPublished, Verified: &notPublished})
+	if err != nil {
+		t.Fatalf("list opportunities returned error: %v", err)
+	}
+
+	for name, filters := range map[string]Filters{"list": listFilters, "count": countFilters} {
+		if filters.Active == nil || !*filters.Active || filters.Verified == nil || !*filters.Verified {
+			t.Fatalf("%s: expected active and verified filters forced to true, got %+v", name, filters)
+		}
 	}
 }
 

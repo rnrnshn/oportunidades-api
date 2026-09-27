@@ -86,6 +86,9 @@ func NewService(repo Repository) *Service {
 
 func (s *Service) ListOpportunities(ctx context.Context, params PaginationParams, filters Filters) (*OpportunitiesResult, error) {
 	page, perPage := normalizePagination(params)
+	published := true
+	filters.Active = &published
+	filters.Verified = &published
 	items, err := s.repo.ListOpportunities(ctx, queries.ListOpportunitiesParams{
 		Limit:  int32(perPage),
 		Offset: int32((page - 1) * perPage),
@@ -115,6 +118,9 @@ func (s *Service) GetOpportunityBySlug(ctx context.Context, slug string) (*Oppor
 	item, err := s.repo.GetOpportunityBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
+	}
+	if !item.IsActive || !item.Verified {
+		return nil, ErrNotFound
 	}
 
 	mappedItem, err := mapOpportunity(item)

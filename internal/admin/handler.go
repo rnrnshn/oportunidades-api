@@ -93,6 +93,28 @@ func (h *Handler) VerifyOpportunity(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+func (h *Handler) VerifyUniversity(c *fiber.Ctx) error {
+	return h.setUniversityVerified(c, true)
+}
+
+func (h *Handler) UnverifyUniversity(c *fiber.Ctx) error {
+	return h.setUniversityVerified(c, false)
+}
+
+func (h *Handler) setUniversityVerified(c *fiber.Ctx, verified bool) error {
+	validationErrors := validation.New()
+	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")
+	validationErrors.UUID("id", c.Params("id"), "id deve ser um UUID válido.")
+	if validationErrors.HasAny() {
+		return apierror.Validation("Dados inválidos.", validationErrors.Details())
+	}
+	result, err := h.service.SetUniversityVerified(c.UserContext(), strings.TrimSpace(c.Params("id")), verified)
+	if err != nil {
+		return handleError(err)
+	}
+	return c.JSON(result)
+}
+
 func (h *Handler) RejectOpportunity(c *fiber.Ctx) error {
 	validationErrors := validation.New()
 	validationErrors.Required("id", c.Params("id"), "id é obrigatório.")

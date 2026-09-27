@@ -67,6 +67,14 @@ func (r *PostgresRepository) VerifyOpportunity(ctx context.Context, id pgtype.UU
 	return item, err
 }
 
+func (r *PostgresRepository) SetUniversityVerified(ctx context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error) {
+	item, err := r.queries.SetUniversityVerified(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.University{}, ErrNotFound
+	}
+	return item, err
+}
+
 func (r *PostgresRepository) RejectOpportunity(ctx context.Context, id pgtype.UUID) (queries.Opportunity, error) {
 	item, err := r.queries.RejectOpportunity(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {

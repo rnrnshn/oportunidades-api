@@ -127,6 +127,8 @@ func NewService(repo Repository) *Service {
 
 func (s *Service) ListUniversities(ctx context.Context, params PaginationParams, filters UniversityFilters) (*UniversitiesResult, error) {
 	page, perPage := normalizePagination(params)
+	verified := true
+	filters.Verified = &verified
 	items, err := s.repo.ListUniversities(ctx, queries.ListUniversitiesParams{
 		Limit:  int32(perPage),
 		Offset: int32((page - 1) * perPage),
@@ -156,6 +158,9 @@ func (s *Service) GetUniversityBySlug(ctx context.Context, slug string) (*Univer
 	item, err := s.repo.GetUniversityBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
+	}
+	if !item.Verified {
+		return nil, ErrNotFound
 	}
 
 	mappedItem, err := mapUniversity(item)

@@ -22,6 +22,8 @@ type Querier interface {
 	CountMentors(ctx context.Context) (int64, error)
 	CountMentorshipSessionsForUser(ctx context.Context, mentorID pgtype.UUID) (int64, error)
 	CountOpportunities(ctx context.Context) (int64, error)
+	CountPendingMentorshipSessions(ctx context.Context) (int64, error)
+	CountPendingReports(ctx context.Context) (int64, error)
 	CountReports(ctx context.Context) (int64, error)
 	CountUniversities(ctx context.Context) (int64, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
@@ -62,6 +64,8 @@ type Querier interface {
 	ListMentors(ctx context.Context, arg ListMentorsParams) ([]ListMentorsRow, error)
 	ListMentorshipSessionsForUser(ctx context.Context, arg ListMentorshipSessionsForUserParams) ([]MentorshipSession, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
+	ListRecentPendingReports(ctx context.Context) ([]Report, error)
+	ListRecentUnverifiedOpportunities(ctx context.Context) ([]Opportunity, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListUniversities(ctx context.Context, arg ListUniversitiesParams) ([]University, error)
 	ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityFee, error)
@@ -74,6 +78,7 @@ type Querier interface {
 	ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	SetUniversityVerified(ctx context.Context, arg SetUniversityVerifiedParams) (University, error)
 	SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error
 	SoftDeleteUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) error
 	UnpublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
