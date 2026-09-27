@@ -363,3 +363,40 @@ func (q *Queries) UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPass
 	)
 	return i, err
 }
+
+const upsertAdminUser = `-- name: UpsertAdminUser :one
+INSERT INTO users (email, password_hash, role, name, email_verified_at)
+VALUES ($1, $2, 'admin', $3, NOW())
+ON CONFLICT (email) DO UPDATE
+SET
+  password_hash = EXCLUDED.password_hash,
+  role = 'admin',
+  name = EXCLUDED.name,
+  email_verified_at = COALESCE(users.email_verified_at, NOW()),
+  deleted_at = NULL
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+`
+
+type UpsertAdminUserParams struct {
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Name         string `json:"name"`
+}
+
+func (q *Queries) UpsertAdminUser(ctx context.Context, arg UpsertAdminUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, upsertAdminUser, arg.Email, arg.PasswordHash, arg.Name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}

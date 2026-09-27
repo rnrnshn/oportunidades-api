@@ -14,6 +14,18 @@ INSERT INTO users (
 )
 RETURNING *;
 
+-- name: UpsertAdminUser :one
+INSERT INTO users (email, password_hash, role, name, email_verified_at)
+VALUES ($1, $2, 'admin', $3, NOW())
+ON CONFLICT (email) DO UPDATE
+SET
+  password_hash = EXCLUDED.password_hash,
+  role = 'admin',
+  name = EXCLUDED.name,
+  email_verified_at = COALESCE(users.email_verified_at, NOW()),
+  deleted_at = NULL
+RETURNING *;
+
 -- name: GetUserByEmail :one
 SELECT *
 FROM users

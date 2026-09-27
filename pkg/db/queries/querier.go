@@ -91,6 +91,7 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 	UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
+	UpsertAdminUser(ctx context.Context, arg UpsertAdminUserParams) (User, error)
 	VerifyOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 }
 
