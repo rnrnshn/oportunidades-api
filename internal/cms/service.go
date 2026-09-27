@@ -421,15 +421,15 @@ func (s *Service) UpdateArticle(ctx context.Context, actor Actor, input CreateAr
 	updatedArticle, err := s.repo.UpdateArticle(ctx, queries.UpdateArticleParams{
 		ID:             uuidToPg(articleID),
 		Title:          title,
-		Excerpt:        chooseText(input.Excerpt, existingArticle.Excerpt),
+		Excerpt:        textToPg(input.Excerpt),
 		Content:        content,
 		ContentJson:    chooseJSON(input.ContentJSON, existingArticle.ContentJson),
-		CoverImageUrl:  chooseText(input.CoverImageURL, existingArticle.CoverImageUrl),
+		CoverImageUrl:  textToPg(input.CoverImageURL),
 		Type:           articleType,
-		SourceName:     chooseText(input.SourceName, existingArticle.SourceName),
-		SourceUrl:      chooseText(input.SourceURL, existingArticle.SourceUrl),
-		SeoTitle:       chooseText(input.SEOTitle, existingArticle.SeoTitle),
-		SeoDescription: chooseText(input.SEODescription, existingArticle.SeoDescription),
+		SourceName:     textToPg(input.SourceName),
+		SourceUrl:      textToPg(input.SourceURL),
+		SeoTitle:       textToPg(input.SEOTitle),
+		SeoDescription: textToPg(input.SEODescription),
 		IsFeatured:     boolValue(input.IsFeatured, existingArticle.IsFeatured),
 	})
 	if err != nil {
@@ -563,21 +563,21 @@ func (s *Service) UpdateUniversity(ctx context.Context, actor Actor, input Creat
 		Name:               name,
 		Type:               typeValue,
 		Province:           province,
-		City:               chooseText(input.City, existing.City),
+		City:               textToPg(input.City),
 		Country:            countryOrDefault(country),
-		Description:        chooseText(input.Description, existing.Description),
-		LogoUrl:            chooseText(input.LogoURL, existing.LogoUrl),
-		CampusImageUrl:     chooseText(input.CampusImageURL, existing.CampusImageUrl),
-		Website:            chooseText(input.Website, existing.Website),
-		Email:              chooseText(input.Email, existing.Email),
-		Phone:              chooseText(input.Phone, existing.Phone),
-		FoundedYear:        chooseInt4WithFallback(input.FoundedYear, existing.FoundedYear),
-		Address:            chooseText(input.Address, existing.Address),
-		MapUrl:             chooseText(input.MapURL, existing.MapUrl),
-		AcademicCalendar:   chooseText(input.AcademicCalendar, existing.AcademicCalendar),
-		StudentCount:       chooseInt4WithFallback(input.StudentCount, existing.StudentCount),
-		AdmissionsDeadline: chooseDate(input.AdmissionsDeadline, existing.AdmissionsDeadline),
-		Tags:               chooseTags(input.Tags, existing.Tags),
+		Description:        textToPg(input.Description),
+		LogoUrl:            textToPg(input.LogoURL),
+		CampusImageUrl:     textToPg(input.CampusImageURL),
+		Website:            textToPg(input.Website),
+		Email:              textToPg(input.Email),
+		Phone:              textToPg(input.Phone),
+		FoundedYear:        chooseInt4(input.FoundedYear, input.FoundedYear > 0),
+		Address:            textToPg(input.Address),
+		MapUrl:             textToPg(input.MapURL),
+		AcademicCalendar:   textToPg(input.AcademicCalendar),
+		StudentCount:       chooseInt4(input.StudentCount, input.StudentCount > 0),
+		AdmissionsDeadline: dateToPg(input.AdmissionsDeadline),
+		Tags:               normalizeTags(input.Tags),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: update university: %w", err)
@@ -762,14 +762,9 @@ func (s *Service) UpdateCourse(ctx context.Context, actor Actor, input CreateCou
 	if name == "" || area == "" || level == "" || regime == "" {
 		return nil, fmt.Errorf("cms: course required fields are missing")
 	}
-	durationYears := existing.DurationYears
-	if input.HasDurationYears {
-		durationYears = chooseInt4(input.DurationYears, true)
-	}
-	annualFee := existing.AnnualFee
-	if strings.TrimSpace(input.AnnualFee) != "" {
-		annualFee = numericToPg(input.AnnualFee)
-	}
+	// Updates store exactly what the editor sent, so clearing an optional field sticks.
+	durationYears := chooseInt4(input.DurationYears, input.HasDurationYears)
+	annualFee := numericToPg(input.AnnualFee)
 	item, err := s.repo.UpdateCourse(ctx, queries.UpdateCourseParams{
 		ID:                uuidToPg(courseID),
 		UniversityID:      universityID,
@@ -779,7 +774,7 @@ func (s *Service) UpdateCourse(ctx context.Context, actor Actor, input CreateCou
 		Regime:            regime,
 		DurationYears:     durationYears,
 		AnnualFee:         annualFee,
-		EntryRequirements: chooseText(input.EntryRequirements, existing.EntryRequirements),
+		EntryRequirements: textToPg(input.EntryRequirements),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: update course: %w", err)
@@ -918,7 +913,7 @@ func (s *Service) UpdateOpportunity(ctx context.Context, actor Actor, input Crea
 	if title == "" || opportunityType == "" || entityName == "" || description == "" || country == "" {
 		return nil, fmt.Errorf("cms: required fields are missing")
 	}
-	deadline := existingOpportunity.Deadline
+	var deadline pgtype.Timestamptz
 	if strings.TrimSpace(input.Deadline) != "" {
 		parsedTime, err := time.Parse(time.RFC3339, strings.TrimSpace(input.Deadline))
 		if err != nil {
@@ -932,25 +927,25 @@ func (s *Service) UpdateOpportunity(ctx context.Context, actor Actor, input Crea
 		Type:               opportunityType,
 		EntityName:         entityName,
 		Description:        description,
-		Requirements:       chooseText(input.Requirements, existingOpportunity.Requirements),
+		Requirements:       textToPg(input.Requirements),
 		Deadline:           deadline,
-		ApplyUrl:           chooseText(input.ApplyURL, existingOpportunity.ApplyUrl),
-		ExternalUrlLabel:   chooseText(input.ExternalURLLabel, existingOpportunity.ExternalUrlLabel),
+		ApplyUrl:           textToPg(input.ApplyURL),
+		ExternalUrlLabel:   textToPg(input.ExternalURLLabel),
 		Country:            country,
-		Location:           chooseText(input.Location, existingOpportunity.Location),
+		Location:           textToPg(input.Location),
 		IsRemote:           input.IsRemote,
-		Language:           chooseText(input.Language, existingOpportunity.Language),
-		Area:               chooseText(input.Area, existingOpportunity.Area),
-		HeroImageUrl:       chooseText(input.HeroImageURL, existingOpportunity.HeroImageUrl),
-		ProviderLogoUrl:    chooseText(input.ProviderLogoURL, existingOpportunity.ProviderLogoUrl),
-		AmountMin:          chooseNumeric(input.AmountMin, existingOpportunity.AmountMin),
-		AmountMax:          chooseNumeric(input.AmountMax, existingOpportunity.AmountMax),
+		Language:           textToPg(input.Language),
+		Area:               textToPg(input.Area),
+		HeroImageUrl:       textToPg(input.HeroImageURL),
+		ProviderLogoUrl:    textToPg(input.ProviderLogoURL),
+		AmountMin:          numericToPg(input.AmountMin),
+		AmountMax:          numericToPg(input.AmountMax),
 		AmountCurrency:     currencyOrDefault(chooseString(input.AmountCurrency, existingOpportunity.AmountCurrency)),
 		Coverage:           chooseTags(input.Coverage, existingOpportunity.Coverage),
-		Eligibility:        chooseText(input.Eligibility, existingOpportunity.Eligibility),
-		ApplicationProcess: chooseText(input.ApplicationProcess, existingOpportunity.ApplicationProcess),
-		DegreeLevel:        chooseText(input.DegreeLevel, existingOpportunity.DegreeLevel),
-		ProgramArea:        chooseText(input.ProgramArea, existingOpportunity.ProgramArea),
+		Eligibility:        textToPg(input.Eligibility),
+		ApplicationProcess: textToPg(input.ApplicationProcess),
+		DegreeLevel:        textToPg(input.DegreeLevel),
+		ProgramArea:        textToPg(input.ProgramArea),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cms: update opportunity: %w", err)
@@ -1159,13 +1154,6 @@ func chooseString(input string, fallback string) string {
 		return fallback
 	}
 	return strings.TrimSpace(input)
-}
-
-func chooseText(input string, fallback pgtype.Text) pgtype.Text {
-	if strings.TrimSpace(input) == "" {
-		return fallback
-	}
-	return textToPg(input)
 }
 
 func boolValue(input *bool, fallback bool) bool {
@@ -1526,13 +1514,6 @@ func chooseInt4(value int32, valid bool) pgtype.Int4 {
 	return pgtype.Int4{Int32: value, Valid: true}
 }
 
-func chooseInt4WithFallback(value int32, fallback pgtype.Int4) pgtype.Int4 {
-	if value > 0 {
-		return pgtype.Int4{Int32: value, Valid: true}
-	}
-	return fallback
-}
-
 func int4Pointer(value pgtype.Int4) *int32 {
 	if !value.Valid {
 		return nil
@@ -1585,13 +1566,6 @@ func dateToPg(value string) pgtype.Date {
 	return pgtype.Date{Time: parsedTime, Valid: true}
 }
 
-func chooseDate(input string, fallback pgtype.Date) pgtype.Date {
-	if strings.TrimSpace(input) == "" {
-		return fallback
-	}
-	return dateToPg(input)
-}
-
 func dateValue(value pgtype.Date) string {
 	if !value.Valid {
 		return ""
@@ -1613,13 +1587,6 @@ func numericToPg(value string) pgtype.Numeric {
 		exp = -int32(len(parts[1]))
 	}
 	return pgtype.Numeric{Int: mustParseNumeric(digits), Exp: exp, Valid: true}
-}
-
-func chooseNumeric(input string, fallback pgtype.Numeric) pgtype.Numeric {
-	if strings.TrimSpace(input) == "" {
-		return fallback
-	}
-	return numericToPg(input)
 }
 
 func numericValue(value pgtype.Numeric) string {
