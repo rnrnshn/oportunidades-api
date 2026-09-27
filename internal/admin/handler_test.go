@@ -65,6 +65,27 @@ func (m *mockRepository) GetReportByID(ctx context.Context, id pgtype.UUID) (que
 func (m *mockRepository) UpdateReportStatus(ctx context.Context, params queries.UpdateReportStatusParams) (queries.Report, error) {
 	return m.updateReportStatusFn(ctx, params)
 }
+func (m *mockRepository) CountCMSArticles(context.Context) (int64, error)      { return 0, nil }
+func (m *mockRepository) CountCMSOpportunities(context.Context) (int64, error) { return 0, nil }
+func (m *mockRepository) CountPendingReports(context.Context) (int64, error)   { return 0, nil }
+func (m *mockRepository) CountPendingMentorshipSessions(context.Context) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) ListRecentPendingReports(context.Context) ([]queries.Report, error) {
+	return nil, nil
+}
+func (m *mockRepository) ListRecentUnverifiedOpportunities(context.Context) ([]queries.Opportunity, error) {
+	return nil, nil
+}
+func (m *mockRepository) ContentCreatedPerDay(context.Context, int) ([]DailyContentCount, error) {
+	return nil, nil
+}
+func (m *mockRepository) OpportunitiesByType(context.Context) ([]TypeCount, error) {
+	return nil, nil
+}
+func (m *mockRepository) OpportunitiesByStatus(context.Context) ([]TypeCount, error) {
+	return nil, nil
+}
 
 func TestHandlerPublishArticle(t *testing.T) {
 	articleID := uuid.New()
