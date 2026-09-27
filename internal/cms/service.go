@@ -1544,7 +1544,7 @@ func int4Pointer(value pgtype.Int4) *int32 {
 func countryOrDefault(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return "Mozambique"
+		return "Moçambique"
 	}
 	return trimmed
 }
