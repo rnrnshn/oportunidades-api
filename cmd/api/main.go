@@ -257,7 +257,7 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool, log zerolog.Logger) {
 	opportunitiesGroup.Get("/:slug", opportunitiesHandler.GetOpportunityBySlug)
 
 	reportsGroup := v1.Group("/reports", appauth.RequireAuth(authService))
-	reportsGroup.Post("", reportsHandler.Create)
+	reportsGroup.Post("", appmiddleware.RateLimit(20, time.Hour), reportsHandler.Create)
 
 	uploadsGroup := v1.Group("/uploads", appauth.RequireAuth(authService))
 	uploadsGroup.Post("/presign", uploadsHandler.Presign)

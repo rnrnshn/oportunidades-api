@@ -34,6 +34,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	validationErrors.Required("entity_id", request.EntityID, "entity_id é obrigatório.")
 	validationErrors.Required("reason", request.Reason, "reason é obrigatório.")
 	validationErrors.UUID("entity_id", request.EntityID, "entity_id deve ser um UUID válido.")
+	validationErrors.Enum("entity_type", request.EntityType, []string{"university", "course", "opportunity"}, "entity_type inválido.")
+	validationErrors.MinLength("reason", request.Reason, 10, "Descreve o problema em pelo menos 10 caracteres.")
+	validationErrors.MaxLength("reason", request.Reason, 1000, "A descrição não pode ter mais de 1000 caracteres.")
 	if validationErrors.HasAny() {
 		return apierror.Validation("Dados inválidos para denúncia.", validationErrors.Details())
 	}

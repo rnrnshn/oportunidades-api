@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -34,6 +35,14 @@ func (e *Errors) MinLength(field string, value string, min int, message string) 
 		return
 	}
 	e.items = append(e.items, FieldError{Field: field, Reason: "min_length", Message: message})
+}
+
+// MaxLength counts characters, not bytes, so accented Portuguese text isn't cut short.
+func (e *Errors) MaxLength(field string, value string, max int, message string) {
+	if utf8.RuneCountInString(strings.TrimSpace(value)) <= max {
+		return
+	}
+	e.items = append(e.items, FieldError{Field: field, Reason: "max_length", Message: message})
 }
 
 func (e *Errors) UUID(field string, value string, message string) {

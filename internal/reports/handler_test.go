@@ -76,3 +76,31 @@ func TestHandlerCreateReportValidatesFields(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
 	}
 }
+
+func TestHandlerCreateReportRejectsBadInput(t *testing.T) {
+	entityID := uuid.NewString()
+	cases := map[string]string{
+		"unknown type":  `{"entity_type":"user","entity_id":"` + entityID + `","reason":"Informação desactualizada"}`,
+		"short reason":  `{"entity_type":"course","entity_id":"` + entityID + `","reason":"errado"}`,
+		"long reason":   `{"entity_type":"course","entity_id":"` + entityID + `","reason":"` + strings.Repeat("á", 1001) + `"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			handler := NewHandler(NewService(&mockRepository{}))
+			app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+			app.Post("/v1/reports", func(c *fiber.Ctx) error {
+				c.Locals("auth_user", appauth.AuthenticatedUser{ID: uuid.NewString(), Role: "user"})
+				return handler.Create(c)
+			})
+			req := httptest.NewRequest(http.MethodPost, "/v1/reports", strings.NewReader(body))
+			req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+			res, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			if res.StatusCode != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", res.StatusCode)
+			}
+		})
+	}
+}
