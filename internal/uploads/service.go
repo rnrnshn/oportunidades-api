@@ -2,7 +2,9 @@ package uploads
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -11,7 +13,28 @@ import (
 	"github.com/rnrnshn/oportunidades-api/pkg/storage"
 )
 
-var filenameUnsafePattern = regexp.MustCompile(`[^a-z0-9._-]+`)
+var (
+	ErrForbidden          = errors.New("uploads: forbidden")
+	ErrUnsupportedType    = errors.New("uploads: unsupported content type")
+	ErrInvalidPath        = errors.New("uploads: invalid path")
+	filenameUnsafePattern = regexp.MustCompile(`[^a-z0-9._-]+`)
+)
+
+// SVG is excluded on purpose: it can carry scripts.
+var extensionByContentType = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/webp": ".webp",
+}
+
+var contentFolders = map[string]bool{"articles": true, "opportunities": true, "universities": true}
+
+const usersFolder = "users"
+
+type Actor struct {
+	ID   string
+	Role string
+}
 
 type Service struct {
 	storageClient storage.Client
@@ -21,10 +44,12 @@ type PresignInput struct {
 	Filename    string
 	ContentType string
 	Folder      string
+	Actor       Actor
 }
 
 type ConfirmInput struct {
-	Path string
+	Path  string
+	Actor Actor
 }
 
 type PresignResult struct {
@@ -43,8 +68,15 @@ func NewService(storageClient storage.Client) *Service {
 }
 
 func (s *Service) Presign(ctx context.Context, input PresignInput) (*PresignResult, error) {
-	objectPath := buildObjectPath(input.Folder, input.Filename)
-	signedUpload, err := s.storageClient.CreateSignedUpload(ctx, objectPath)
+	ext, ok := extensionByContentType[strings.ToLower(strings.TrimSpace(input.ContentType))]
+	if !ok {
+		return nil, ErrUnsupportedType
+	}
+	prefix, err := folderPrefix(input.Folder, input.Actor)
+	if err != nil {
+		return nil, err
+	}
+	signedUpload, err := s.storageClient.CreateSignedUpload(ctx, prefix+uuid.NewString()+"-"+safeName(input.Filename)+ext)
 	if err != nil {
 		return nil, fmt.Errorf("uploads: create signed upload: %w", err)
 	}
@@ -52,20 +84,61 @@ func (s *Service) Presign(ctx context.Context, input PresignInput) (*PresignResu
 }
 
 func (s *Service) Confirm(_ context.Context, input ConfirmInput) (*ConfirmResult, error) {
+	objectPath := strings.TrimSpace(input.Path)
+	if objectPath == "" || strings.HasPrefix(objectPath, "/") || path.Clean(objectPath) != objectPath {
+		return nil, ErrInvalidPath
+	}
+	folder, _, found := strings.Cut(objectPath, "/")
+	if !found {
+		return nil, ErrInvalidPath
+	}
+	prefix, err := folderPrefix(folder, input.Actor)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(objectPath, prefix) || !allowedExtension(filepath.Ext(objectPath)) {
+		return nil, ErrInvalidPath
+	}
+
 	result := &ConfirmResult{}
-	result.Data.Path = strings.TrimLeft(strings.TrimSpace(input.Path), "/")
-	result.Data.PublicURL = s.storageClient.PublicURL(result.Data.Path)
+	result.Data.Path = objectPath
+	result.Data.PublicURL = s.storageClient.PublicURL(objectPath)
 	return result, nil
 }
 
-func buildObjectPath(folder string, filename string) string {
-	base := strings.ToLower(strings.TrimSpace(filename))
-	base = filenameUnsafePattern.ReplaceAllString(base, "-")
-	base = strings.Trim(base, "-")
-	ext := strings.ToLower(filepath.Ext(base))
-	name := strings.TrimSuffix(base, ext)
-	if name == "" {
-		name = "upload"
+func folderPrefix(folder string, actor Actor) (string, error) {
+	folder = strings.TrimSpace(folder)
+	switch {
+	case contentFolders[folder]:
+		if actor.Role != "admin" && actor.Role != "cms_partner" {
+			return "", ErrForbidden
+		}
+		return folder + "/", nil
+	case folder == usersFolder:
+		if strings.TrimSpace(actor.ID) == "" {
+			return "", ErrForbidden
+		}
+		return usersFolder + "/" + actor.ID + "/", nil
+	default:
+		return "", ErrInvalidPath
 	}
-	return strings.Trim(strings.TrimSpace(folder), "/") + "/" + uuid.NewString() + "-" + name + ext
+}
+
+func allowedExtension(ext string) bool {
+	for _, allowed := range extensionByContentType {
+		if strings.EqualFold(ext, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+func safeName(filename string) string {
+	base := strings.ToLower(strings.TrimSpace(filepath.Base(filename)))
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	base = strings.Trim(filenameUnsafePattern.ReplaceAllString(base, "-"), "-.")
+	if base == "" {
+		return "upload"
+	}
+	return base
 }
