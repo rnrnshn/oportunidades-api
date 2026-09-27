@@ -49,11 +49,16 @@ func main() {
 	}
 	defer pool.Close()
 
-	app := fiber.New(fiber.Config{
+	appConfig := fiber.Config{
 		ErrorHandler: apierror.Handler,
 		AppName:      "oportunidades-api",
 		BodyLimit:    2 * 1024 * 1024,
-	})
+	}
+	if isProduction(getEnv("ENV", "development")) {
+		// Cloudflare overwrites this header and the API is only reachable through the tunnel and gateway.
+		appConfig.ProxyHeader = "CF-Connecting-IP"
+	}
+	app := fiber.New(appConfig)
 
 	app.Use(appmiddleware.Logger(log))
 	app.Use(appmiddleware.Recover())
@@ -159,14 +164,16 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool) {
 
 	v1 := app.Group("/v1")
 	authGroup := v1.Group("/auth")
-	authGroup.Post("/register", authHandler.Register)
-	authGroup.Post("/login", authHandler.Login)
+	authLimit := appmiddleware.RateLimit(10, time.Minute)
+	emailLimit := appmiddleware.RateLimit(5, 15*time.Minute)
+	authGroup.Post("/register", authLimit, authHandler.Register)
+	authGroup.Post("/login", authLimit, authHandler.Login)
 	authGroup.Post("/refresh", authHandler.Refresh)
 	authGroup.Post("/logout", authHandler.Logout)
-	authGroup.Post("/forgot-password", authHandler.ForgotPassword)
-	authGroup.Post("/reset-password", authHandler.ResetPassword)
-	authGroup.Post("/verify-email", authHandler.VerifyEmail)
-	authGroup.Post("/send-verification", appauth.RequireAuth(authService), authHandler.SendVerification)
+	authGroup.Post("/forgot-password", emailLimit, authHandler.ForgotPassword)
+	authGroup.Post("/reset-password", authLimit, authHandler.ResetPassword)
+	authGroup.Post("/verify-email", authLimit, authHandler.VerifyEmail)
+	authGroup.Post("/send-verification", emailLimit, appauth.RequireAuth(authService), authHandler.SendVerification)
 
 	accountGroup := v1.Group("/account", appauth.RequireAuth(authService))
 	accountGroup.Get("/me", accountHandler.GetMe)
