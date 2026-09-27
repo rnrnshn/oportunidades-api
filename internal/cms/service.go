@@ -305,6 +305,10 @@ type CourseItem struct {
 	Area         string `json:"area"`
 	Level        string `json:"level"`
 	Regime       string `json:"regime"`
+	// Returned so editors can see the stored values; without them the admin form opened these fields empty.
+	DurationYears     int32  `json:"duration_years,omitempty"`
+	AnnualFee         string `json:"annual_fee,omitempty"`
+	EntryRequirements string `json:"entry_requirements,omitempty"`
 }
 
 func NewService(repo Repository) *Service { return &Service{repo: repo} }
@@ -1123,7 +1127,21 @@ func mapCourse(course queries.Course) (CourseItem, error) {
 	if err != nil {
 		return CourseItem{}, fmt.Errorf("cms: course university id: %w", err)
 	}
-	return CourseItem{ID: id.String(), Slug: course.Slug, UniversityID: universityID.String(), Name: course.Name, Area: course.Area, Level: course.Level, Regime: course.Regime}, nil
+	item := CourseItem{
+		ID:                id.String(),
+		Slug:              course.Slug,
+		UniversityID:      universityID.String(),
+		Name:              course.Name,
+		Area:              course.Area,
+		Level:             course.Level,
+		Regime:            course.Regime,
+		AnnualFee:         numericValue(course.AnnualFee),
+		EntryRequirements: textValue(course.EntryRequirements),
+	}
+	if course.DurationYears.Valid {
+		item.DurationYears = course.DurationYears.Int32
+	}
+	return item, nil
 }
 
 func slugify(value string) string {
