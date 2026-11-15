@@ -220,19 +220,19 @@ func (r *PostgresRepository) ContentCreatedPerDay(ctx context.Context, days int)
 	query := `
 		WITH dates AS (
 			SELECT generate_series(
-				(CURRENT_DATE - ($1 || ' days')::interval)::date,
+				(CURRENT_DATE - make_interval(days => $1::int))::date,
 				CURRENT_DATE,
 				'1 day'::interval
 			)::date AS day
 		),
 		art AS (
 			SELECT created_at::date AS day, COUNT(*) AS cnt
-			FROM articles WHERE deleted_at IS NULL AND created_at >= CURRENT_DATE - ($1 || ' days')::interval
+			FROM articles WHERE deleted_at IS NULL AND created_at >= CURRENT_DATE - make_interval(days => $1::int)
 			GROUP BY 1
 		),
 		opp AS (
 			SELECT created_at::date AS day, COUNT(*) AS cnt
-			FROM opportunities WHERE deleted_at IS NULL AND created_at >= CURRENT_DATE - ($1 || ' days')::interval
+			FROM opportunities WHERE deleted_at IS NULL AND created_at >= CURRENT_DATE - make_interval(days => $1::int)
 			GROUP BY 1
 		)
 		SELECT d.day::text, COALESCE(a.cnt, 0), COALESCE(o.cnt, 0)
