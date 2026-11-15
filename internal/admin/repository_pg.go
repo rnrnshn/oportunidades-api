@@ -2,7 +2,9 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -307,6 +309,10 @@ func (r *PostgresRepository) CountUsers(ctx context.Context, params queries.Admi
 	return r.queries.AdminCountUsers(ctx, params)
 }
 
+func (r *PostgresRepository) UserTabCounts(ctx context.Context) (queries.AdminUserTabCountsRow, error) {
+	return r.queries.AdminUserTabCounts(ctx)
+}
+
 func (r *PostgresRepository) CountUsersByRole(ctx context.Context) ([]queries.AdminCountUsersByRoleRow, error) {
 	return r.queries.AdminCountUsersByRole(ctx)
 }
@@ -319,28 +325,169 @@ func (r *PostgresRepository) GetUser(ctx context.Context, id pgtype.UUID) (queri
 	return item, err
 }
 
-func (r *PostgresRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+func (r *PostgresRepository) ListAuditEvents(ctx context.Context, userID pgtype.UUID) ([]queries.ListAuditEventsForUserRow, error) {
+	return r.queries.ListAuditEventsForUser(ctx, userID)
+}
+
+// inTx runs fn in a transaction and commits only if it returns nil.
+func (r *PostgresRepository) inTx(ctx context.Context, fn func(q *queries.Queries) error) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return queries.AdminUpdateUserRoleRow{}, err
+		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(r.queries.WithTx(tx)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
 
-	q := r.queries.WithTx(tx)
-	item, err := q.AdminUpdateUserRole(ctx, params)
+func writeAudit(ctx context.Context, q *queries.Queries, audit AuditEntry) error {
+	data, err := json.Marshal(audit.Data)
+	if err != nil || audit.Data == nil {
+		data = []byte("{}")
+	}
+	return q.CreateAuditEvent(ctx, queries.CreateAuditEventParams{ActorID: audit.ActorID, Action: audit.Action, TargetUserID: audit.Target, Data: data})
+}
+
+func (r *PostgresRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams, audit AuditEntry) (queries.AdminUpdateUserRoleRow, error) {
+	var item queries.AdminUpdateUserRoleRow
+	err := r.inTx(ctx, func(q *queries.Queries) error {
+		var err error
+		item, err = q.AdminUpdateUserRole(ctx, params)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The user exists (checked by the service), so the last-admin guard blocked the update.
+			return ErrLastAdmin
+		}
+		if err != nil {
+			return err
+		}
+		// Force a new login so the next session carries the new role.
+		if err := q.RevokeAllRefreshTokensByUser(ctx, params.ID); err != nil {
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+	return item, err
+}
+
+func (r *PostgresRepository) SuspendUser(ctx context.Context, params queries.AdminSuspendUserParams, audit AuditEntry) error {
+	return r.inTx(ctx, func(q *queries.Queries) error {
+		if _, err := q.AdminSuspendUser(ctx, params); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrLastAdmin
+			}
+			return err
+		}
+		if err := q.RevokeAllRefreshTokensByUser(ctx, params.ID); err != nil {
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+}
+
+func (r *PostgresRepository) UnsuspendUser(ctx context.Context, id pgtype.UUID, audit AuditEntry) error {
+	return r.inTx(ctx, func(q *queries.Queries) error {
+		if _, err := q.AdminUnsuspendUser(ctx, id); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotSuspended
+			}
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+}
+
+func (r *PostgresRepository) UserExistsByEmail(ctx context.Context, email string) (bool, error) {
+	return r.queries.AdminUserExistsByEmail(ctx, email)
+}
+
+func (r *PostgresRepository) PendingInviteExists(ctx context.Context, email string) (bool, error) {
+	return r.queries.PendingUserInviteExists(ctx, email)
+}
+
+func (r *PostgresRepository) CreateInvite(ctx context.Context, params queries.CreateUserInviteParams, audit AuditEntry) (queries.UserInvite, error) {
+	var invite queries.UserInvite
+	err := r.inTx(ctx, func(q *queries.Queries) error {
+		var err error
+		if invite, err = q.CreateUserInvite(ctx, params); err != nil {
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+	return invite, err
+}
+
+func (r *PostgresRepository) ListPendingInvites(ctx context.Context) ([]queries.ListPendingUserInvitesRow, error) {
+	return r.queries.ListPendingUserInvites(ctx)
+}
+
+func (r *PostgresRepository) GetInviteByID(ctx context.Context, id pgtype.UUID) (queries.UserInvite, error) {
+	item, err := r.queries.GetUserInviteByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		// The user exists (checked by the service), so the last-admin guard blocked the update.
-		return queries.AdminUpdateUserRoleRow{}, ErrLastAdmin
+		return queries.UserInvite{}, ErrNotFound
 	}
-	if err != nil {
-		return queries.AdminUpdateUserRoleRow{}, err
+	return item, err
+}
+
+func (r *PostgresRepository) GetInviteByTokenHash(ctx context.Context, tokenHash string) (queries.UserInvite, error) {
+	item, err := r.queries.GetUserInviteByTokenHash(ctx, tokenHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.UserInvite{}, ErrNotFound
 	}
-	// Force a new login so the next access token carries the new role.
-	if err := q.RevokeAllRefreshTokensByUser(ctx, params.ID); err != nil {
-		return queries.AdminUpdateUserRoleRow{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return queries.AdminUpdateUserRoleRow{}, err
-	}
-	return item, nil
+	return item, err
+}
+
+func (r *PostgresRepository) RotateInvite(ctx context.Context, params queries.RotateUserInviteTokenParams, audit AuditEntry) (queries.UserInvite, error) {
+	var invite queries.UserInvite
+	err := r.inTx(ctx, func(q *queries.Queries) error {
+		var err error
+		invite, err = q.RotateUserInviteToken(ctx, params)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInviteInvalid
+		}
+		if err != nil {
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+	return invite, err
+}
+
+func (r *PostgresRepository) RevokeInvite(ctx context.Context, id pgtype.UUID, audit AuditEntry) (queries.UserInvite, error) {
+	var invite queries.UserInvite
+	err := r.inTx(ctx, func(q *queries.Queries) error {
+		var err error
+		invite, err = q.RevokeUserInvite(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInviteInvalid
+		}
+		if err != nil {
+			return err
+		}
+		return writeAudit(ctx, q, audit)
+	})
+	return invite, err
+}
+
+func (r *PostgresRepository) AcceptInvite(ctx context.Context, inviteID pgtype.UUID, user queries.AdminCreateInvitedUserParams) (pgtype.UUID, error) {
+	var userID pgtype.UUID
+	err := r.inTx(ctx, func(q *queries.Queries) error {
+		invite, err := q.AcceptUserInvite(ctx, inviteID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInviteInvalid
+		}
+		if err != nil {
+			return err
+		}
+		if userID, err = q.AdminCreateInvitedUser(ctx, user); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return ErrEmailInUse
+			}
+			return err
+		}
+		return writeAudit(ctx, q, AuditEntry{ActorID: invite.InvitedBy, Action: "invite_accepted", Target: userID, Data: map[string]any{"role": invite.Role, "email": invite.Email}})
+	})
+	return userID, err
 }

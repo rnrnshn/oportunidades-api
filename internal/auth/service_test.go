@@ -19,6 +19,8 @@ type mockEmailSender struct {
 	sendPasswordResetEmailFn func(context.Context, appemail.PasswordResetMessage) error
 }
 
+func (m mockEmailSender) SendInviteEmail(context.Context, appemail.InviteMessage) error { return nil }
+
 func (m mockEmailSender) SendPasswordResetEmail(ctx context.Context, message appemail.PasswordResetMessage) error {
 	if m.sendPasswordResetEmailFn == nil {
 		return nil
@@ -521,4 +523,41 @@ func TestServiceDeactivateAccount(t *testing.T) {
 
 func uuidToPg(value uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: [16]byte(value), Valid: true}
+}
+
+func TestSuspendedAccounts(t *testing.T) {
+	userID := uuid.New()
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.MinCost)
+	suspended := queries.User{
+		ID:           pgtype.UUID{Bytes: [16]byte(userID), Valid: true},
+		Email:        "s@example.test",
+		PasswordHash: string(hash),
+		Role:         "admin",
+		Name:         "S",
+		SuspendedAt:  pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}
+	repo := &mockRepository{
+		getUserByEmailFn: func(context.Context, string) (queries.User, error) { return suspended, nil },
+		getUserByIDFn:    func(context.Context, pgtype.UUID) (queries.User, error) { return suspended, nil },
+	}
+	service := NewService(repo, Config{JWTSecret: "secret", JWTExpiry: 15 * time.Minute, RefreshTokenExpiry: time.Hour, RefreshCookieName: "refresh_token"})
+
+	if _, err := service.Login(context.Background(), LoginInput{Email: suspended.Email, Password: "wrong-password"}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("wrong password must not reveal suspension, got %v", err)
+	}
+	if _, err := service.Login(context.Background(), LoginInput{Email: suspended.Email, Password: "correct-password"}); !errors.Is(err, ErrAccountSuspended) {
+		t.Fatalf("expected ErrAccountSuspended at login, got %v", err)
+	}
+	if _, err := service.ActiveUser(context.Background(), userID.String()); !errors.Is(err, ErrAccountSuspended) {
+		t.Fatalf("expected ErrAccountSuspended on requests, got %v", err)
+	}
+
+	active := suspended
+	active.SuspendedAt = pgtype.Timestamptz{}
+	active.Role = "cms_partner"
+	repo.getUserByIDFn = func(context.Context, pgtype.UUID) (queries.User, error) { return active, nil }
+	user, err := service.ActiveUser(context.Background(), userID.String())
+	if err != nil || user.Role != "cms_partner" {
+		t.Fatalf("expected current role from the database, got %+v %v", user, err)
+	}
 }

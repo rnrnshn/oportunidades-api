@@ -30,7 +30,13 @@ type mockRepository struct {
 	setUniversityVerifiedFn func(context.Context, queries.SetUniversityVerifiedParams) (queries.University, error)
 	listUsersFn             func(context.Context, queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error)
 	getUserFn               func(context.Context, pgtype.UUID) (queries.AdminGetUserRow, error)
-	updateUserRoleFn        func(context.Context, queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error)
+	updateUserRoleFn        func(context.Context, queries.AdminUpdateUserRoleParams, AuditEntry) (queries.AdminUpdateUserRoleRow, error)
+	suspendUserFn           func(context.Context, queries.AdminSuspendUserParams, AuditEntry) error
+	userExistsFn            func(context.Context, string) (bool, error)
+	pendingInviteFn         func(context.Context, string) (bool, error)
+	createInviteFn          func(context.Context, queries.CreateUserInviteParams, AuditEntry) (queries.UserInvite, error)
+	inviteByHashFn          func(context.Context, string) (queries.UserInvite, error)
+	acceptInviteFn          func(context.Context, pgtype.UUID, queries.AdminCreateInvitedUserParams) (pgtype.UUID, error)
 }
 
 func (m *mockRepository) SetUniversityVerified(ctx context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error) {
@@ -295,6 +301,9 @@ func (m *mockRepository) ListUsers(ctx context.Context, params queries.AdminList
 func (m *mockRepository) CountUsers(context.Context, queries.AdminCountUsersParams) (int64, error) {
 	return 0, nil
 }
+func (m *mockRepository) UserTabCounts(context.Context) (queries.AdminUserTabCountsRow, error) {
+	return queries.AdminUserTabCountsRow{Team: 1}, nil
+}
 func (m *mockRepository) CountUsersByRole(context.Context) ([]queries.AdminCountUsersByRoleRow, error) {
 	return []queries.AdminCountUsersByRoleRow{{Role: "admin", Total: 1}}, nil
 }
@@ -304,9 +313,61 @@ func (m *mockRepository) GetUser(ctx context.Context, id pgtype.UUID) (queries.A
 	}
 	return queries.AdminGetUserRow{}, ErrNotFound
 }
-func (m *mockRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+func (m *mockRepository) ListAuditEvents(context.Context, pgtype.UUID) ([]queries.ListAuditEventsForUserRow, error) {
+	return nil, nil
+}
+func (m *mockRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams, audit AuditEntry) (queries.AdminUpdateUserRoleRow, error) {
 	if m.updateUserRoleFn != nil {
-		return m.updateUserRoleFn(ctx, params)
+		return m.updateUserRoleFn(ctx, params, audit)
 	}
 	return queries.AdminUpdateUserRoleRow{}, nil
+}
+func (m *mockRepository) SuspendUser(ctx context.Context, params queries.AdminSuspendUserParams, audit AuditEntry) error {
+	if m.suspendUserFn != nil {
+		return m.suspendUserFn(ctx, params, audit)
+	}
+	return nil
+}
+func (m *mockRepository) UnsuspendUser(context.Context, pgtype.UUID, AuditEntry) error { return nil }
+func (m *mockRepository) UserExistsByEmail(ctx context.Context, email string) (bool, error) {
+	if m.userExistsFn != nil {
+		return m.userExistsFn(ctx, email)
+	}
+	return false, nil
+}
+func (m *mockRepository) PendingInviteExists(ctx context.Context, email string) (bool, error) {
+	if m.pendingInviteFn != nil {
+		return m.pendingInviteFn(ctx, email)
+	}
+	return false, nil
+}
+func (m *mockRepository) CreateInvite(ctx context.Context, params queries.CreateUserInviteParams, audit AuditEntry) (queries.UserInvite, error) {
+	if m.createInviteFn != nil {
+		return m.createInviteFn(ctx, params, audit)
+	}
+	return queries.UserInvite{}, nil
+}
+func (m *mockRepository) ListPendingInvites(context.Context) ([]queries.ListPendingUserInvitesRow, error) {
+	return nil, nil
+}
+func (m *mockRepository) GetInviteByID(context.Context, pgtype.UUID) (queries.UserInvite, error) {
+	return queries.UserInvite{}, ErrNotFound
+}
+func (m *mockRepository) GetInviteByTokenHash(ctx context.Context, hash string) (queries.UserInvite, error) {
+	if m.inviteByHashFn != nil {
+		return m.inviteByHashFn(ctx, hash)
+	}
+	return queries.UserInvite{}, ErrNotFound
+}
+func (m *mockRepository) RotateInvite(context.Context, queries.RotateUserInviteTokenParams, AuditEntry) (queries.UserInvite, error) {
+	return queries.UserInvite{}, nil
+}
+func (m *mockRepository) RevokeInvite(context.Context, pgtype.UUID, AuditEntry) (queries.UserInvite, error) {
+	return queries.UserInvite{}, nil
+}
+func (m *mockRepository) AcceptInvite(ctx context.Context, id pgtype.UUID, user queries.AdminCreateInvitedUserParams) (pgtype.UUID, error) {
+	if m.acceptInviteFn != nil {
+		return m.acceptInviteFn(ctx, id, user)
+	}
+	return pgtype.UUID{}, nil
 }

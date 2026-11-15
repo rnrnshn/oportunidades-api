@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -68,5 +69,16 @@ func authenticateRequest(c *fiber.Ctx, service *Service) (AuthenticatedUser, err
 		return AuthenticatedUser{}, apierror.Unauthorized("Token inválido ou expirado.")
 	}
 
-	return AuthenticatedUser{ID: claims.Subject, Role: claims.Role}, nil
+	user, err := service.ActiveUser(c.UserContext(), claims.Subject)
+	if errors.Is(err, ErrAccountSuspended) {
+		// 401 makes the client try a refresh, which is also refused, and sends the person to login.
+		return AuthenticatedUser{}, apierror.Unauthorized("A sua conta está suspensa.")
+	}
+	if errors.Is(err, ErrInvalidCredentials) {
+		return AuthenticatedUser{}, apierror.Unauthorized("Token inválido ou expirado.")
+	}
+	if err != nil {
+		return AuthenticatedUser{}, err
+	}
+	return user, nil
 }

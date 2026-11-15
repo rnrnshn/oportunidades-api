@@ -24,6 +24,9 @@ import (
 
 var ErrInvalidCredentials = errors.New("auth: invalid credentials")
 
+// ErrAccountSuspended is returned for suspended accounts at login, refresh and on every authenticated request.
+var ErrAccountSuspended = errors.New("auth: account suspended")
+
 const (
 	purposePasswordReset     = "password_reset"
 	purposeEmailVerification = "email_verification"
@@ -163,6 +166,10 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*AuthResult, err
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
+	// Checked after the password so suspension doesn't reveal which emails have accounts.
+	if user.SuspendedAt.Valid {
+		return nil, ErrAccountSuspended
+	}
 
 	return s.issueTokens(ctx, user)
 }
@@ -193,6 +200,9 @@ func (s *Service) Refresh(ctx context.Context, rawRefreshToken string) (*AuthRes
 
 	if err := s.repo.RevokeRefreshToken(ctx, storedToken.ID); err != nil {
 		return nil, fmt.Errorf("auth: revoke refresh token: %w", err)
+	}
+	if user.SuspendedAt.Valid {
+		return nil, ErrAccountSuspended
 	}
 
 	return s.issueTokens(ctx, user)
@@ -554,4 +564,25 @@ func uuidFromPg(value pgtype.UUID) (uuid.UUID, error) {
 	}
 
 	return uuid.UUID(value.Bytes), nil
+}
+
+// ActiveUser loads the account behind an access token on every authenticated request,
+// so suspension takes effect immediately and the current role (not the one in the
+// token) is used.
+func (s *Service) ActiveUser(ctx context.Context, userID string) (AuthenticatedUser, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return AuthenticatedUser{}, ErrInvalidCredentials
+	}
+	user, err := s.repo.GetUserByID(ctx, pgtype.UUID{Bytes: [16]byte(id), Valid: true})
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return AuthenticatedUser{}, ErrInvalidCredentials
+		}
+		return AuthenticatedUser{}, fmt.Errorf("auth: load user: %w", err)
+	}
+	if user.SuspendedAt.Valid {
+		return AuthenticatedUser{}, ErrAccountSuspended
+	}
+	return AuthenticatedUser{ID: userID, Role: user.Role}, nil
 }

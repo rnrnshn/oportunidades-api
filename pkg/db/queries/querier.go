@@ -11,12 +11,22 @@ import (
 )
 
 type Querier interface {
+	// Single use: only succeeds once, and only while the invite is still valid.
+	AcceptUserInvite(ctx context.Context, id pgtype.UUID) (UserInvite, error)
 	AdminCountUsers(ctx context.Context, arg AdminCountUsersParams) (int64, error)
 	AdminCountUsersByRole(ctx context.Context) ([]AdminCountUsersByRoleRow, error)
+	AdminCreateInvitedUser(ctx context.Context, arg AdminCreateInvitedUserParams) (pgtype.UUID, error)
 	AdminGetUser(ctx context.Context, id pgtype.UUID) (AdminGetUserRow, error)
+	// Team = people with panel access; community = everyone else.
+	// last_seen_at: newest session (every login/refresh creates one).
 	AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]AdminListUsersRow, error)
-	// Demoting an admin only succeeds while another admin remains, checked in the same statement.
+	// Suspending an admin only succeeds while another active admin remains.
+	AdminSuspendUser(ctx context.Context, arg AdminSuspendUserParams) (pgtype.UUID, error)
+	AdminUnsuspendUser(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	// Demoting an admin only succeeds while another active admin remains, checked in the same statement.
 	AdminUpdateUserRole(ctx context.Context, arg AdminUpdateUserRoleParams) (AdminUpdateUserRoleRow, error)
+	AdminUserExistsByEmail(ctx context.Context, lower string) (bool, error)
+	AdminUserTabCounts(ctx context.Context) (AdminUserTabCountsRow, error)
 	ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	ConsumeAuthActionToken(ctx context.Context, id pgtype.UUID) error
 	CountArticles(ctx context.Context) (int64, error)
@@ -34,6 +44,7 @@ type Querier interface {
 	CountSavedOpportunities(ctx context.Context, userID pgtype.UUID) (int64, error)
 	CountUniversities(ctx context.Context) (int64, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
+	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error
 	CreateAuthActionToken(ctx context.Context, arg CreateAuthActionTokenParams) (AuthActionToken, error)
 	CreateCourse(ctx context.Context, arg CreateCourseParams) (Course, error)
 	CreateMentorshipSession(ctx context.Context, arg CreateMentorshipSessionParams) (MentorshipSession, error)
@@ -44,6 +55,7 @@ type Querier interface {
 	CreateUniversityFee(ctx context.Context, arg CreateUniversityFeeParams) (UniversityFee, error)
 	CreateUniversityScholarship(ctx context.Context, arg CreateUniversityScholarshipParams) (UniversityScholarship, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUserInvite(ctx context.Context, arg CreateUserInviteParams) (UserInvite, error)
 	DeactivateOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error)
 	GetArticleByID(ctx context.Context, id pgtype.UUID) (Article, error)
@@ -61,8 +73,11 @@ type Querier interface {
 	GetUniversityBySlug(ctx context.Context, slug string) (University, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	GetUserInviteByID(ctx context.Context, id pgtype.UUID) (UserInvite, error)
+	GetUserInviteByTokenHash(ctx context.Context, tokenHash string) (UserInvite, error)
 	IsPublishedOpportunity(ctx context.Context, id pgtype.UUID) (bool, error)
 	ListArticles(ctx context.Context, arg ListArticlesParams) ([]Article, error)
+	ListAuditEventsForUser(ctx context.Context, targetUserID pgtype.UUID) ([]ListAuditEventsForUserRow, error)
 	ListCMSArticles(ctx context.Context, arg ListCMSArticlesParams) ([]Article, error)
 	ListCMSCourses(ctx context.Context, arg ListCMSCoursesParams) ([]Course, error)
 	ListCMSOpportunities(ctx context.Context, arg ListCMSOpportunitiesParams) ([]Opportunity, error)
@@ -72,6 +87,7 @@ type Querier interface {
 	ListMentors(ctx context.Context, arg ListMentorsParams) ([]ListMentorsRow, error)
 	ListMentorshipSessionsForUser(ctx context.Context, arg ListMentorshipSessionsForUserParams) ([]MentorshipSession, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
+	ListPendingUserInvites(ctx context.Context) ([]ListPendingUserInvitesRow, error)
 	ListRecentPendingReports(ctx context.Context) ([]Report, error)
 	ListRecentUnverifiedOpportunities(ctx context.Context) ([]Opportunity, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
@@ -81,6 +97,7 @@ type Querier interface {
 	ListUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityFee, error)
 	ListUniversityScholarshipsByUniversityID(ctx context.Context, universityID pgtype.UUID) ([]UniversityScholarship, error)
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error)
+	PendingUserInviteExists(ctx context.Context, lower string) (bool, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	RejectOpportunity(ctx context.Context, id pgtype.UUID) (Opportunity, error)
 	ReportCourseExists(ctx context.Context, id pgtype.UUID) (bool, error)
@@ -88,6 +105,8 @@ type Querier interface {
 	ReportUniversityExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	RevokeAllRefreshTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	RevokeRefreshToken(ctx context.Context, id pgtype.UUID) error
+	RevokeUserInvite(ctx context.Context, id pgtype.UUID) (UserInvite, error)
+	RotateUserInviteToken(ctx context.Context, arg RotateUserInviteTokenParams) (UserInvite, error)
 	SaveOpportunity(ctx context.Context, arg SaveOpportunityParams) error
 	SetUniversityVerified(ctx context.Context, arg SetUniversityVerifiedParams) (University, error)
 	SoftDeleteUniversityFeesByUniversityID(ctx context.Context, universityID pgtype.UUID) error

@@ -30,6 +30,15 @@ type Article struct {
 	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type AuditEvent struct {
+	ID           pgtype.UUID        `json:"id"`
+	ActorID      pgtype.UUID        `json:"actor_id"`
+	Action       string             `json:"action"`
+	TargetUserID pgtype.UUID        `json:"target_user_id"`
+	Data         []byte             `json:"data"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type AuthActionToken struct {
 	ID         pgtype.UUID        `json:"id"`
 	UserID     pgtype.UUID        `json:"user_id"`
@@ -202,14 +211,30 @@ type UniversityScholarship struct {
 }
 
 type User struct {
-	ID              pgtype.UUID        `json:"id"`
-	Email           string             `json:"email"`
-	PasswordHash    string             `json:"password_hash"`
-	Role            string             `json:"role"`
-	Name            string             `json:"name"`
-	AvatarUrl       pgtype.Text        `json:"avatar_url"`
-	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	ID               pgtype.UUID        `json:"id"`
+	Email            string             `json:"email"`
+	PasswordHash     string             `json:"password_hash"`
+	Role             string             `json:"role"`
+	Name             string             `json:"name"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	EmailVerifiedAt  pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	SuspendedAt      pgtype.Timestamptz `json:"suspended_at"`
+	SuspendedBy      pgtype.UUID        `json:"suspended_by"`
+	SuspensionReason pgtype.Text        `json:"suspension_reason"`
+}
+
+type UserInvite struct {
+	ID         pgtype.UUID        `json:"id"`
+	Email      string             `json:"email"`
+	Name       string             `json:"name"`
+	Role       string             `json:"role"`
+	TokenHash  string             `json:"token_hash"`
+	InvitedBy  pgtype.UUID        `json:"invited_by"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }

@@ -225,7 +225,31 @@ func handleError(err error) error {
 		return apierror.Forbidden("Não pode alterar a sua própria função.")
 	}
 	if errors.Is(err, ErrLastAdmin) {
-		return apierror.Conflict("Não é possível remover o último administrador.")
+		return apierror.Conflict("Não é possível remover ou suspender o último administrador ativo.")
+	}
+	if errors.Is(err, ErrSelfSuspend) {
+		return apierror.Forbidden("Não pode suspender a sua própria conta.")
+	}
+	if errors.Is(err, ErrAlreadySuspended) {
+		return apierror.Conflict("A conta já está suspensa.")
+	}
+	if errors.Is(err, ErrNotSuspended) {
+		return apierror.Conflict("A conta não está suspensa.")
+	}
+	if errors.Is(err, ErrEmailInUse) {
+		return apierror.Conflict("Já existe uma conta com este email. Altere a função dessa conta em vez de enviar um convite.")
+	}
+	if errors.Is(err, ErrInvitePending) {
+		return apierror.Conflict("Já existe um convite pendente para este email. Reenvie-o na lista de convites.")
+	}
+	if errors.Is(err, ErrInviteInvalid) {
+		return apierror.NotFound("Este convite não é válido ou já foi utilizado.")
+	}
+	if errors.Is(err, ErrInviteExpired) {
+		return apierror.NotFound("Este convite expirou. Peça um novo convite à equipa.")
+	}
+	if errors.Is(err, ErrInviteInput) {
+		return apierror.Validation("Dados do convite inválidos.", nil)
 	}
 	return err
 }

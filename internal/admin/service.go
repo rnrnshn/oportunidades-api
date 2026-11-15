@@ -10,9 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	appemail "github.com/rnrnshn/oportunidades-api/pkg/email"
 )
 
-type Service struct{ repo Repository }
+type Service struct {
+	repo         Repository
+	emailSender  appemail.Sender
+	dashboardURL string
+}
 
 const (
 	defaultPage    = 1
@@ -123,7 +128,13 @@ type ReportItem struct {
 	ResolvedAt string `json:"resolved_at,omitempty"`
 }
 
-func NewService(repo Repository) *Service { return &Service{repo: repo} }
+func NewService(repo Repository, opts ...Option) *Service {
+	s := &Service{repo: repo}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
 
 func (s *Service) Dashboard(ctx context.Context) (*DashboardResult, error) {
 	articlesCount, err := s.repo.CountCMSArticles(ctx)

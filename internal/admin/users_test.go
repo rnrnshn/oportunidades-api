@@ -79,7 +79,7 @@ func TestHandlerUpdateUserRole(t *testing.T) {
 		var updated queries.AdminUpdateUserRoleParams
 		app := roleApp(&mockRepository{
 			getUserFn: existing("user"),
-			updateUserRoleFn: func(_ context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+			updateUserRoleFn: func(_ context.Context, params queries.AdminUpdateUserRoleParams, _ AuditEntry) (queries.AdminUpdateUserRoleRow, error) {
 				updated = params
 				return queries.AdminUpdateUserRoleRow{ID: params.ID, Email: "u@example.com", Name: "U", Role: params.Role}, nil
 			},
@@ -96,7 +96,7 @@ func TestHandlerUpdateUserRole(t *testing.T) {
 		called := false
 		app := roleApp(&mockRepository{
 			getUserFn: existing("admin"),
-			updateUserRoleFn: func(context.Context, queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+			updateUserRoleFn: func(context.Context, queries.AdminUpdateUserRoleParams, AuditEntry) (queries.AdminUpdateUserRoleRow, error) {
 				called = true
 				return queries.AdminUpdateUserRoleRow{}, nil
 			},
@@ -112,7 +112,7 @@ func TestHandlerUpdateUserRole(t *testing.T) {
 	t.Run("keeps the last admin", func(t *testing.T) {
 		app := roleApp(&mockRepository{
 			getUserFn: existing("admin"),
-			updateUserRoleFn: func(context.Context, queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+			updateUserRoleFn: func(context.Context, queries.AdminUpdateUserRoleParams, AuditEntry) (queries.AdminUpdateUserRoleRow, error) {
 				return queries.AdminUpdateUserRoleRow{}, ErrLastAdmin
 			},
 		}, actorID)

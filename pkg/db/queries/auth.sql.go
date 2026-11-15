@@ -116,7 +116,7 @@ INSERT INTO users (
   $4,
   $5
 )
-RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 `
 
 type CreateUserParams struct {
@@ -147,6 +147,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
@@ -156,7 +159,7 @@ UPDATE users
 SET deleted_at = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 `
 
 func (q *Queries) DeactivateUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -173,6 +176,9 @@ func (q *Queries) DeactivateUser(ctx context.Context, id pgtype.UUID) (User, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
@@ -233,7 +239,7 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 FROM users
 WHERE email = $1
   AND deleted_at IS NULL
@@ -253,12 +259,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+SELECT id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 FROM users
 WHERE id = $1
   AND deleted_at IS NULL
@@ -278,6 +287,9 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
@@ -287,7 +299,7 @@ UPDATE users
 SET email_verified_at = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 `
 
 func (q *Queries) MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -304,6 +316,9 @@ func (q *Queries) MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) (Us
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
@@ -338,7 +353,7 @@ UPDATE users
 SET password_hash = $2
 WHERE id = $1
   AND deleted_at IS NULL
-RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 `
 
 type UpdateUserPasswordByIDParams struct {
@@ -360,6 +375,9 @@ func (q *Queries) UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPass
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }
@@ -374,7 +392,7 @@ SET
   name = EXCLUDED.name,
   email_verified_at = COALESCE(users.email_verified_at, NOW()),
   deleted_at = NULL
-RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at
+RETURNING id, email, password_hash, role, name, avatar_url, email_verified_at, created_at, updated_at, deleted_at, suspended_at, suspended_by, suspension_reason
 `
 
 type UpsertAdminUserParams struct {
@@ -397,6 +415,9 @@ func (q *Queries) UpsertAdminUser(ctx context.Context, arg UpsertAdminUserParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.SuspendedAt,
+		&i.SuspendedBy,
+		&i.SuspensionReason,
 	)
 	return i, err
 }

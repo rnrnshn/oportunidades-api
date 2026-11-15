@@ -275,6 +275,9 @@ func handleServiceError(err error) error {
 	if errors.Is(err, ErrInvalidCredentials) {
 		return apierror.Unauthorized("Credenciais inválidas.")
 	}
+	if errors.Is(err, ErrAccountSuspended) {
+		return apierror.Forbidden("A sua conta está suspensa. Contacte a equipa do Oportunidades.")
+	}
 
 	if strings.Contains(err.Error(), "email already exists") {
 		return apierror.Conflict("Já existe uma conta com este email.")

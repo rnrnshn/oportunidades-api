@@ -17,11 +17,41 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ,
+  suspended_at TIMESTAMPTZ,
+  suspended_by UUID REFERENCES users(id),
+  suspension_reason TEXT,
   CONSTRAINT users_email_unique UNIQUE (email)
 );
 
 CREATE INDEX users_role_idx ON users (role) WHERE deleted_at IS NULL;
 CREATE INDEX users_deleted_at_idx ON users (deleted_at);
+
+CREATE TABLE user_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'cms_partner')),
+  token_hash TEXT NOT NULL,
+  invited_by UUID NOT NULL REFERENCES users(id),
+  expires_at TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT user_invites_token_hash_unique UNIQUE (token_hash)
+);
+
+CREATE INDEX user_invites_pending_idx ON user_invites (lower(email)) WHERE accepted_at IS NULL AND revoked_at IS NULL;
+
+CREATE TABLE audit_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id UUID REFERENCES users(id),
+  action TEXT NOT NULL CHECK (action IN ('role_changed', 'suspended', 'unsuspended', 'invite_sent', 'invite_resent', 'invite_revoked', 'invite_accepted')),
+  target_user_id UUID REFERENCES users(id),
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX audit_events_target_idx ON audit_events (target_user_id, created_at DESC);
 
 CREATE TABLE refresh_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

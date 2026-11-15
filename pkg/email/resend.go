@@ -25,9 +25,18 @@ type PasswordResetMessage struct {
 	ResetURL      string
 }
 
+type InviteMessage struct {
+	To            string
+	RecipientName string
+	InviterName   string
+	RoleLabel     string
+	InviteURL     string
+}
+
 type Sender interface {
 	SendVerificationEmail(ctx context.Context, message VerificationMessage) error
 	SendPasswordResetEmail(ctx context.Context, message PasswordResetMessage) error
+	SendInviteEmail(ctx context.Context, message InviteMessage) error
 }
 
 type ResendSender struct {
@@ -72,6 +81,20 @@ func (s *ResendSender) SendPasswordResetEmail(ctx context.Context, message Passw
 		Outro:      "Se não fizeste este pedido, ignora esta mensagem. A tua password continua igual.",
 	}
 	return s.send(ctx, message.To, "Redefine a tua password no Oportunidades", content)
+}
+
+func (s *ResendSender) SendInviteEmail(ctx context.Context, message InviteMessage) error {
+	if strings.TrimSpace(message.InviteURL) == "" {
+		return fmt.Errorf("email: invite url is required")
+	}
+	content := actionEmail{
+		Greeting:   greeting(message.RecipientName),
+		Intro:      fmt.Sprintf("%s convidou-te para a equipa do Oportunidades como %s. Aceita o convite para criares a tua conta no painel.", message.InviterName, message.RoleLabel),
+		ButtonText: "Aceitar convite",
+		URL:        message.InviteURL,
+		Outro:      "O convite expira em 7 dias. Se não esperavas esta mensagem, podes ignorá-la.",
+	}
+	return s.send(ctx, message.To, "Convite para a equipa do Oportunidades", content)
 }
 
 func (s *ResendSender) send(ctx context.Context, to string, subject string, content actionEmail) error {

@@ -13,6 +13,14 @@ var ErrNotFound = errors.New("admin: not found")
 // ErrLastAdmin is returned when a role change would leave no admin.
 var ErrLastAdmin = errors.New("admin: last admin")
 
+// AuditEntry is a change to a user account, recorded in audit_events.
+type AuditEntry struct {
+	ActorID pgtype.UUID
+	Action  string
+	Target  pgtype.UUID
+	Data    map[string]any
+}
+
 type Repository interface {
 	GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (queries.Article, error)
@@ -38,10 +46,25 @@ type Repository interface {
 	OpportunitiesByStatus(ctx context.Context) ([]TypeCount, error)
 	ListUsers(ctx context.Context, params queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error)
 	CountUsers(ctx context.Context, params queries.AdminCountUsersParams) (int64, error)
+	UserTabCounts(ctx context.Context) (queries.AdminUserTabCountsRow, error)
 	CountUsersByRole(ctx context.Context) ([]queries.AdminCountUsersByRoleRow, error)
 	GetUser(ctx context.Context, id pgtype.UUID) (queries.AdminGetUserRow, error)
-	// UpdateUserRole changes the role and revokes the user's refresh tokens in one transaction.
-	UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error)
+	ListAuditEvents(ctx context.Context, userID pgtype.UUID) ([]queries.ListAuditEventsForUserRow, error)
+	// UpdateUserRole changes the role, revokes the user's sessions and records the audit event in one transaction.
+	UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams, audit AuditEntry) (queries.AdminUpdateUserRoleRow, error)
+	// SuspendUser suspends, revokes sessions and audits in one transaction. ErrLastAdmin when blocked by the guard.
+	SuspendUser(ctx context.Context, params queries.AdminSuspendUserParams, audit AuditEntry) error
+	UnsuspendUser(ctx context.Context, id pgtype.UUID, audit AuditEntry) error
+	UserExistsByEmail(ctx context.Context, email string) (bool, error)
+	PendingInviteExists(ctx context.Context, email string) (bool, error)
+	CreateInvite(ctx context.Context, params queries.CreateUserInviteParams, audit AuditEntry) (queries.UserInvite, error)
+	ListPendingInvites(ctx context.Context) ([]queries.ListPendingUserInvitesRow, error)
+	GetInviteByID(ctx context.Context, id pgtype.UUID) (queries.UserInvite, error)
+	GetInviteByTokenHash(ctx context.Context, tokenHash string) (queries.UserInvite, error)
+	RotateInvite(ctx context.Context, params queries.RotateUserInviteTokenParams, audit AuditEntry) (queries.UserInvite, error)
+	RevokeInvite(ctx context.Context, id pgtype.UUID, audit AuditEntry) (queries.UserInvite, error)
+	// AcceptInvite marks the invite used and creates the account in one transaction. ErrInviteInvalid when it can't be used.
+	AcceptInvite(ctx context.Context, inviteID pgtype.UUID, user queries.AdminCreateInvitedUserParams) (pgtype.UUID, error)
 }
 
 type DailyContentCount struct {

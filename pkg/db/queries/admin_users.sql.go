@@ -13,23 +13,41 @@ import (
 
 const adminCountUsers = `-- name: AdminCountUsers :one
 SELECT COUNT(*)
-FROM users
-WHERE deleted_at IS NULL
-  AND ($1::text IS NULL OR role = $1::text)
+FROM users u
+WHERE u.deleted_at IS NULL
   AND (
-    $2::text IS NULL
-    OR name ILIKE '%' || $2::text || '%'
-    OR email ILIKE '%' || $2::text || '%'
+    $1::text IS NULL
+    OR ($1::text = 'team' AND u.role IN ('admin', 'cms_partner'))
+    OR ($1::text = 'community' AND u.role IN ('user', 'mentor'))
+  )
+  AND ($2::text IS NULL OR u.role = $2::text)
+  AND (
+    $3::text IS NULL
+    OR ($3::text = 'active' AND u.suspended_at IS NULL)
+    OR ($3::text = 'suspended' AND u.suspended_at IS NOT NULL)
+    OR ($3::text = 'unverified' AND u.email_verified_at IS NULL)
+  )
+  AND (
+    $4::text IS NULL
+    OR u.name ILIKE '%' || $4::text || '%'
+    OR u.email ILIKE '%' || $4::text || '%'
   )
 `
 
 type AdminCountUsersParams struct {
-	Role  pgtype.Text `json:"role"`
-	Query pgtype.Text `json:"query"`
+	Scope  pgtype.Text `json:"scope"`
+	Role   pgtype.Text `json:"role"`
+	Status pgtype.Text `json:"status"`
+	Query  pgtype.Text `json:"query"`
 }
 
 func (q *Queries) AdminCountUsers(ctx context.Context, arg AdminCountUsersParams) (int64, error) {
-	row := q.db.QueryRow(ctx, adminCountUsers, arg.Role, arg.Query)
+	row := q.db.QueryRow(ctx, adminCountUsers,
+		arg.Scope,
+		arg.Role,
+		arg.Status,
+		arg.Query,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -67,21 +85,61 @@ func (q *Queries) AdminCountUsersByRole(ctx context.Context) ([]AdminCountUsersB
 	return items, nil
 }
 
+const adminCreateInvitedUser = `-- name: AdminCreateInvitedUser :one
+INSERT INTO users (email, password_hash, role, name, email_verified_at)
+VALUES ($1, $2, $3, $4, NOW())
+RETURNING id
+`
+
+type AdminCreateInvitedUserParams struct {
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Role         string `json:"role"`
+	Name         string `json:"name"`
+}
+
+func (q *Queries) AdminCreateInvitedUser(ctx context.Context, arg AdminCreateInvitedUserParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminCreateInvitedUser,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Role,
+		arg.Name,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const adminGetUser = `-- name: AdminGetUser :one
-SELECT id, email, role, name, avatar_url, email_verified_at, created_at
-FROM users
-WHERE id = $1
-  AND deleted_at IS NULL
+SELECT
+  u.id, u.email, u.role, u.name, u.avatar_url, u.email_verified_at, u.created_at,
+  u.suspended_at, u.suspension_reason,
+  sb.name AS suspended_by_name,
+  (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id)::timestamptz AS last_seen_at,
+  (SELECT COUNT(*) FROM articles a WHERE a.author_id = u.id AND a.deleted_at IS NULL)::bigint AS article_count,
+  (SELECT COUNT(*) FROM opportunities o WHERE o.published_by = u.id AND o.deleted_at IS NULL)::bigint AS opportunity_count,
+  (SELECT COUNT(*) FROM universities un WHERE un.created_by = u.id AND un.deleted_at IS NULL)::bigint AS university_count
+FROM users u
+LEFT JOIN users sb ON sb.id = u.suspended_by
+WHERE u.id = $1
+  AND u.deleted_at IS NULL
 `
 
 type AdminGetUserRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	Email           string             `json:"email"`
-	Role            string             `json:"role"`
-	Name            string             `json:"name"`
-	AvatarUrl       pgtype.Text        `json:"avatar_url"`
-	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ID               pgtype.UUID        `json:"id"`
+	Email            string             `json:"email"`
+	Role             string             `json:"role"`
+	Name             string             `json:"name"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	EmailVerifiedAt  pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	SuspendedAt      pgtype.Timestamptz `json:"suspended_at"`
+	SuspensionReason pgtype.Text        `json:"suspension_reason"`
+	SuspendedByName  pgtype.Text        `json:"suspended_by_name"`
+	LastSeenAt       pgtype.Timestamptz `json:"last_seen_at"`
+	ArticleCount     int64              `json:"article_count"`
+	OpportunityCount int64              `json:"opportunity_count"`
+	UniversityCount  int64              `json:"university_count"`
 }
 
 func (q *Queries) AdminGetUser(ctx context.Context, id pgtype.UUID) (AdminGetUserRow, error) {
@@ -95,31 +153,59 @@ func (q *Queries) AdminGetUser(ctx context.Context, id pgtype.UUID) (AdminGetUse
 		&i.AvatarUrl,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
+		&i.SuspendedAt,
+		&i.SuspensionReason,
+		&i.SuspendedByName,
+		&i.LastSeenAt,
+		&i.ArticleCount,
+		&i.OpportunityCount,
+		&i.UniversityCount,
 	)
 	return i, err
 }
 
 const adminListUsers = `-- name: AdminListUsers :many
-SELECT id, email, role, name, avatar_url, email_verified_at, created_at
-FROM users
-WHERE deleted_at IS NULL
-  AND ($1::text IS NULL OR role = $1::text)
+SELECT
+  u.id, u.email, u.role, u.name, u.avatar_url, u.email_verified_at, u.created_at, u.suspended_at,
+  (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id)::timestamptz AS last_seen_at,
+  (
+    (SELECT COUNT(*) FROM articles a WHERE a.author_id = u.id AND a.deleted_at IS NULL)
+    + (SELECT COUNT(*) FROM opportunities o WHERE o.published_by = u.id AND o.deleted_at IS NULL)
+    + (SELECT COUNT(*) FROM universities un WHERE un.created_by = u.id AND un.deleted_at IS NULL)
+  )::bigint AS content_count
+FROM users u
+WHERE u.deleted_at IS NULL
   AND (
-    $2::text IS NULL
-    OR name ILIKE '%' || $2::text || '%'
-    OR email ILIKE '%' || $2::text || '%'
+    $1::text IS NULL
+    OR ($1::text = 'team' AND u.role IN ('admin', 'cms_partner'))
+    OR ($1::text = 'community' AND u.role IN ('user', 'mentor'))
+  )
+  AND ($2::text IS NULL OR u.role = $2::text)
+  AND (
+    $3::text IS NULL
+    OR ($3::text = 'active' AND u.suspended_at IS NULL)
+    OR ($3::text = 'suspended' AND u.suspended_at IS NOT NULL)
+    OR ($3::text = 'unverified' AND u.email_verified_at IS NULL)
+  )
+  AND (
+    $4::text IS NULL
+    OR u.name ILIKE '%' || $4::text || '%'
+    OR u.email ILIKE '%' || $4::text || '%'
   )
 ORDER BY
-  CASE WHEN $3::text = 'name_asc' THEN name END ASC,
-  CASE WHEN $3::text = 'name_desc' THEN name END DESC,
-  CASE WHEN $3::text = 'created_at_asc' THEN created_at END ASC,
-  created_at DESC,
-  id
-LIMIT $5::int OFFSET $4::int
+  CASE WHEN $5::text = 'name_asc' THEN u.name END ASC,
+  CASE WHEN $5::text = 'name_desc' THEN u.name END DESC,
+  CASE WHEN $5::text = 'created_at_asc' THEN u.created_at END ASC,
+  CASE WHEN $5::text = 'last_seen_desc' THEN (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id) END DESC NULLS LAST,
+  u.created_at DESC,
+  u.id
+LIMIT $7::int OFFSET $6::int
 `
 
 type AdminListUsersParams struct {
+	Scope  pgtype.Text `json:"scope"`
 	Role   pgtype.Text `json:"role"`
+	Status pgtype.Text `json:"status"`
 	Query  pgtype.Text `json:"query"`
 	Sort   string      `json:"sort"`
 	Offset int32       `json:"offset"`
@@ -134,11 +220,18 @@ type AdminListUsersRow struct {
 	AvatarUrl       pgtype.Text        `json:"avatar_url"`
 	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	SuspendedAt     pgtype.Timestamptz `json:"suspended_at"`
+	LastSeenAt      pgtype.Timestamptz `json:"last_seen_at"`
+	ContentCount    int64              `json:"content_count"`
 }
 
+// Team = people with panel access; community = everyone else.
+// last_seen_at: newest session (every login/refresh creates one).
 func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]AdminListUsersRow, error) {
 	rows, err := q.db.Query(ctx, adminListUsers,
+		arg.Scope,
 		arg.Role,
+		arg.Status,
 		arg.Query,
 		arg.Sort,
 		arg.Offset,
@@ -159,6 +252,9 @@ func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) 
 			&i.AvatarUrl,
 			&i.EmailVerifiedAt,
 			&i.CreatedAt,
+			&i.SuspendedAt,
+			&i.LastSeenAt,
+			&i.ContentCount,
 		); err != nil {
 			return nil, err
 		}
@@ -170,6 +266,49 @@ func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) 
 	return items, nil
 }
 
+const adminSuspendUser = `-- name: AdminSuspendUser :one
+UPDATE users AS u
+SET suspended_at = NOW(), suspended_by = $1, suspension_reason = $2::text
+WHERE u.id = $3
+  AND u.deleted_at IS NULL
+  AND u.suspended_at IS NULL
+  AND (
+    u.role <> 'admin'
+    OR (SELECT COUNT(*) FROM users AS a WHERE a.role = 'admin' AND a.deleted_at IS NULL AND a.suspended_at IS NULL AND a.id <> u.id) > 0
+  )
+RETURNING u.id
+`
+
+type AdminSuspendUserParams struct {
+	ActorID pgtype.UUID `json:"actor_id"`
+	Reason  string      `json:"reason"`
+	ID      pgtype.UUID `json:"id"`
+}
+
+// Suspending an admin only succeeds while another active admin remains.
+func (q *Queries) AdminSuspendUser(ctx context.Context, arg AdminSuspendUserParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminSuspendUser, arg.ActorID, arg.Reason, arg.ID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const adminUnsuspendUser = `-- name: AdminUnsuspendUser :one
+UPDATE users
+SET suspended_at = NULL, suspended_by = NULL, suspension_reason = NULL
+WHERE id = $1
+  AND deleted_at IS NULL
+  AND suspended_at IS NOT NULL
+RETURNING id
+`
+
+func (q *Queries) AdminUnsuspendUser(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminUnsuspendUser, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const adminUpdateUserRole = `-- name: AdminUpdateUserRole :one
 UPDATE users AS u
 SET role = $1::text
@@ -178,7 +317,7 @@ WHERE u.id = $2
   AND (
     $1::text = 'admin'
     OR u.role <> 'admin'
-    OR (SELECT COUNT(*) FROM users AS a WHERE a.role = 'admin' AND a.deleted_at IS NULL) > 1
+    OR (SELECT COUNT(*) FROM users AS a WHERE a.role = 'admin' AND a.deleted_at IS NULL AND a.suspended_at IS NULL AND a.id <> u.id) > 0
   )
 RETURNING u.id, u.email, u.role, u.name, u.avatar_url, u.email_verified_at, u.created_at
 `
@@ -198,7 +337,7 @@ type AdminUpdateUserRoleRow struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
-// Demoting an admin only succeeds while another admin remains, checked in the same statement.
+// Demoting an admin only succeeds while another active admin remains, checked in the same statement.
 func (q *Queries) AdminUpdateUserRole(ctx context.Context, arg AdminUpdateUserRoleParams) (AdminUpdateUserRoleRow, error) {
 	row := q.db.QueryRow(ctx, adminUpdateUserRole, arg.Role, arg.ID)
 	var i AdminUpdateUserRoleRow
@@ -211,5 +350,36 @@ func (q *Queries) AdminUpdateUserRole(ctx context.Context, arg AdminUpdateUserRo
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 	)
+	return i, err
+}
+
+const adminUserExistsByEmail = `-- name: AdminUserExistsByEmail :one
+SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1) AND deleted_at IS NULL)
+`
+
+func (q *Queries) AdminUserExistsByEmail(ctx context.Context, lower string) (bool, error) {
+	row := q.db.QueryRow(ctx, adminUserExistsByEmail, lower)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const adminUserTabCounts = `-- name: AdminUserTabCounts :one
+SELECT
+  (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND role IN ('admin', 'cms_partner'))::bigint AS team,
+  (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND role IN ('user', 'mentor'))::bigint AS community,
+  (SELECT COUNT(*) FROM user_invites WHERE accepted_at IS NULL AND revoked_at IS NULL AND expires_at > NOW())::bigint AS invites
+`
+
+type AdminUserTabCountsRow struct {
+	Team      int64 `json:"team"`
+	Community int64 `json:"community"`
+	Invites   int64 `json:"invites"`
+}
+
+func (q *Queries) AdminUserTabCounts(ctx context.Context) (AdminUserTabCountsRow, error) {
+	row := q.db.QueryRow(ctx, adminUserTabCounts)
+	var i AdminUserTabCountsRow
+	err := row.Scan(&i.Team, &i.Community, &i.Invites)
 	return i, err
 }
