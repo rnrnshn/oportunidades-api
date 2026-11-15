@@ -233,6 +233,9 @@ func registerRoutes(app *fiber.App, pool *pgxpool.Pool, log zerolog.Logger) {
 	adminGroup.Get("/reports", adminHandler.ListReports)
 	adminGroup.Get("/reports/:id", adminHandler.GetReport)
 	adminGroup.Patch("/reports/:id", adminHandler.UpdateReportStatus)
+	adminGroup.Get("/users", adminHandler.ListUsers)
+	adminGroup.Get("/users/:id", adminHandler.GetUser)
+	adminGroup.Patch("/users/:id/role", adminHandler.UpdateUserRole)
 
 	articlesGroup := v1.Group("/articles")
 	articlesGroup.Get("", articlesHandler.ListArticles)

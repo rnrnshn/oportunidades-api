@@ -28,6 +28,9 @@ type mockRepository struct {
 	getReportByIDFn         func(context.Context, pgtype.UUID) (queries.Report, error)
 	updateReportStatusFn    func(context.Context, queries.UpdateReportStatusParams) (queries.Report, error)
 	setUniversityVerifiedFn func(context.Context, queries.SetUniversityVerifiedParams) (queries.University, error)
+	listUsersFn             func(context.Context, queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error)
+	getUserFn               func(context.Context, pgtype.UUID) (queries.AdminGetUserRow, error)
+	updateUserRoleFn        func(context.Context, queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error)
 }
 
 func (m *mockRepository) SetUniversityVerified(ctx context.Context, params queries.SetUniversityVerifiedParams) (queries.University, error) {
@@ -281,4 +284,29 @@ func TestHandlerDeactivateOpportunity(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
+}
+
+func (m *mockRepository) ListUsers(ctx context.Context, params queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error) {
+	if m.listUsersFn != nil {
+		return m.listUsersFn(ctx, params)
+	}
+	return nil, nil
+}
+func (m *mockRepository) CountUsers(context.Context, queries.AdminCountUsersParams) (int64, error) {
+	return 0, nil
+}
+func (m *mockRepository) CountUsersByRole(context.Context) ([]queries.AdminCountUsersByRoleRow, error) {
+	return []queries.AdminCountUsersByRoleRow{{Role: "admin", Total: 1}}, nil
+}
+func (m *mockRepository) GetUser(ctx context.Context, id pgtype.UUID) (queries.AdminGetUserRow, error) {
+	if m.getUserFn != nil {
+		return m.getUserFn(ctx, id)
+	}
+	return queries.AdminGetUserRow{}, ErrNotFound
+}
+func (m *mockRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+	if m.updateUserRoleFn != nil {
+		return m.updateUserRoleFn(ctx, params)
+	}
+	return queries.AdminUpdateUserRoleRow{}, nil
 }

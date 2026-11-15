@@ -221,5 +221,11 @@ func handleError(err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return apierror.NotFound("Recurso não encontrado.")
 	}
+	if errors.Is(err, ErrSelfRoleChange) {
+		return apierror.Forbidden("Não pode alterar a sua própria função.")
+	}
+	if errors.Is(err, ErrLastAdmin) {
+		return apierror.Conflict("Não é possível remover o último administrador.")
+	}
 	return err
 }

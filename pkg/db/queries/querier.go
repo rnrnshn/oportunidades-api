@@ -11,6 +11,12 @@ import (
 )
 
 type Querier interface {
+	AdminCountUsers(ctx context.Context, arg AdminCountUsersParams) (int64, error)
+	AdminCountUsersByRole(ctx context.Context) ([]AdminCountUsersByRoleRow, error)
+	AdminGetUser(ctx context.Context, id pgtype.UUID) (AdminGetUserRow, error)
+	AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]AdminListUsersRow, error)
+	// Demoting an admin only succeeds while another admin remains, checked in the same statement.
+	AdminUpdateUserRole(ctx context.Context, arg AdminUpdateUserRoleParams) (AdminUpdateUserRoleRow, error)
 	ArchiveArticle(ctx context.Context, id pgtype.UUID) (Article, error)
 	ConsumeAuthActionToken(ctx context.Context, id pgtype.UUID) error
 	CountArticles(ctx context.Context) (int64, error)

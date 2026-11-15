@@ -10,6 +10,9 @@ import (
 
 var ErrNotFound = errors.New("admin: not found")
 
+// ErrLastAdmin is returned when a role change would leave no admin.
+var ErrLastAdmin = errors.New("admin: last admin")
+
 type Repository interface {
 	GetArticleByID(ctx context.Context, id pgtype.UUID) (queries.Article, error)
 	PublishArticle(ctx context.Context, id pgtype.UUID) (queries.Article, error)
@@ -33,6 +36,12 @@ type Repository interface {
 	ContentCreatedPerDay(ctx context.Context, days int) ([]DailyContentCount, error)
 	OpportunitiesByType(ctx context.Context) ([]TypeCount, error)
 	OpportunitiesByStatus(ctx context.Context) ([]TypeCount, error)
+	ListUsers(ctx context.Context, params queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error)
+	CountUsers(ctx context.Context, params queries.AdminCountUsersParams) (int64, error)
+	CountUsersByRole(ctx context.Context) ([]queries.AdminCountUsersByRoleRow, error)
+	GetUser(ctx context.Context, id pgtype.UUID) (queries.AdminGetUserRow, error)
+	// UpdateUserRole changes the role and revokes the user's refresh tokens in one transaction.
+	UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error)
 }
 
 type DailyContentCount struct {

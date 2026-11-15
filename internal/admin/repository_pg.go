@@ -298,3 +298,49 @@ func (r *PostgresRepository) OpportunitiesByStatus(ctx context.Context) ([]TypeC
 	}
 	return items, rows.Err()
 }
+
+func (r *PostgresRepository) ListUsers(ctx context.Context, params queries.AdminListUsersParams) ([]queries.AdminListUsersRow, error) {
+	return r.queries.AdminListUsers(ctx, params)
+}
+
+func (r *PostgresRepository) CountUsers(ctx context.Context, params queries.AdminCountUsersParams) (int64, error) {
+	return r.queries.AdminCountUsers(ctx, params)
+}
+
+func (r *PostgresRepository) CountUsersByRole(ctx context.Context) ([]queries.AdminCountUsersByRoleRow, error) {
+	return r.queries.AdminCountUsersByRole(ctx)
+}
+
+func (r *PostgresRepository) GetUser(ctx context.Context, id pgtype.UUID) (queries.AdminGetUserRow, error) {
+	item, err := r.queries.AdminGetUser(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queries.AdminGetUserRow{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *PostgresRepository) UpdateUserRole(ctx context.Context, params queries.AdminUpdateUserRoleParams) (queries.AdminUpdateUserRoleRow, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return queries.AdminUpdateUserRoleRow{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := r.queries.WithTx(tx)
+	item, err := q.AdminUpdateUserRole(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The user exists (checked by the service), so the last-admin guard blocked the update.
+		return queries.AdminUpdateUserRoleRow{}, ErrLastAdmin
+	}
+	if err != nil {
+		return queries.AdminUpdateUserRoleRow{}, err
+	}
+	// Force a new login so the next access token carries the new role.
+	if err := q.RevokeAllRefreshTokensByUser(ctx, params.ID); err != nil {
+		return queries.AdminUpdateUserRoleRow{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return queries.AdminUpdateUserRoleRow{}, err
+	}
+	return item, nil
+}
