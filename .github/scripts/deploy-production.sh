@@ -37,14 +37,14 @@ compose() {
 start_service() {
 	compose build "$service" || return 1
 	if [ "$service" = "api" ]; then
-		compose run --rm migrate || return 1
+		compose run --rm migrate </dev/null || return 1
 	fi
-	compose up -d --no-deps "$service"
+	compose up -d --no-deps --force-recreate "$service"
 }
 
 restore_service() {
 	compose build "$service" || return 1
-	compose up -d --no-deps "$service"
+	compose up -d --no-deps --force-recreate "$service"
 }
 
 healthy() {
@@ -97,7 +97,7 @@ tar -xzf "$archive" -C "$stage"
 printf '%s\n' "$revision" > "$stage/REVISION"
 
 if [ "$service" = "api" ]; then
-	compose run --rm -e BACKUP_ONCE=1 -e SUPABASE_URL= -e SUPABASE_SERVICE_ROLE_KEY= backup
+	compose run --rm -e BACKUP_ONCE=1 -e SUPABASE_URL= -e SUPABASE_SERVICE_ROLE_KEY= backup </dev/null
 fi
 
 mv "$app" "$previous"
@@ -113,6 +113,7 @@ if ! start_service || ! healthy; then
 fi
 
 rm -rf "$previous"
+test "$(<"$app/REVISION")" = "$revision"
 compose ps "$service"
 echo "Deployed $service at $revision"
 REMOTE
