@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	"github.com/rnrnshn/oportunidades-api/pkg/htmlsanitize"
 )
 
 var slugUnsafePattern = regexp.MustCompile(`[^a-z0-9]+`)
@@ -377,7 +378,7 @@ func (s *Service) CreateArticle(ctx context.Context, actor Actor, input CreateAr
 		Slug:           slugify(input.Title),
 		Title:          strings.TrimSpace(input.Title),
 		Excerpt:        textToPg(input.Excerpt),
-		Content:        strings.TrimSpace(input.Content),
+		Content:        htmlsanitize.Article(strings.TrimSpace(input.Content)),
 		ContentJson:    jsonBytes(input.ContentJSON),
 		CoverImageUrl:  textToPg(input.CoverImageURL),
 		Type:           strings.TrimSpace(input.Type),
@@ -412,8 +413,11 @@ func (s *Service) UpdateArticle(ctx context.Context, actor Actor, input CreateAr
 	if !canManageArticle(actor, existingArticle) {
 		return nil, ErrForbidden
 	}
+	if actor.Role != "admin" && existingArticle.Status == "published" {
+		return nil, ErrForbidden
+	}
 	title := chooseString(input.Title, existingArticle.Title)
-	content := chooseString(input.Content, existingArticle.Content)
+	content := htmlsanitize.Article(chooseString(input.Content, existingArticle.Content))
 	articleType := chooseString(input.Type, existingArticle.Type)
 	if strings.TrimSpace(title) == "" || strings.TrimSpace(content) == "" || strings.TrimSpace(articleType) == "" {
 		return nil, fmt.Errorf("cms: title, content and type are required")
@@ -971,7 +975,7 @@ func mapArticle(article queries.Article) (ArticleItem, error) {
 		Slug:           article.Slug,
 		Title:          article.Title,
 		Excerpt:        textValue(article.Excerpt),
-		Content:        article.Content,
+		Content:        htmlsanitize.Article(article.Content),
 		ContentJSON:    parseJSON(article.ContentJson),
 		CoverImageURL:  textValue(article.CoverImageUrl),
 		Type:           article.Type,

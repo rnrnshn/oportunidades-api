@@ -145,15 +145,17 @@ func (m *mockRepository) UpdateOpportunity(ctx context.Context, params queries.U
 func TestHandlerCreateArticle(t *testing.T) {
 	articleID := uuid.New()
 	userID := uuid.New()
-	handler := NewHandler(NewService(&mockRepository{createArticleFn: func(context.Context, queries.CreateArticleParams) (queries.Article, error) {
-		return queries.Article{ID: pgtype.UUID{Bytes: [16]byte(articleID), Valid: true}, Slug: "novo-artigo", Title: "Novo Artigo", Type: "guide", Status: "draft", AuthorID: pgtype.UUID{Bytes: [16]byte(userID), Valid: true}}, nil
+	var created queries.CreateArticleParams
+	handler := NewHandler(NewService(&mockRepository{createArticleFn: func(_ context.Context, params queries.CreateArticleParams) (queries.Article, error) {
+		created = params
+		return queries.Article{ID: pgtype.UUID{Bytes: [16]byte(articleID), Valid: true}, Slug: "novo-artigo", Title: "Novo Artigo", Content: params.Content, Type: "guide", Status: "draft", AuthorID: pgtype.UUID{Bytes: [16]byte(userID), Valid: true}}, nil
 	}}))
 	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
 	app.Post("/v1/cms/articles", func(c *fiber.Ctx) error {
 		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
 		return handler.CreateArticle(c)
 	})
-	req := httptest.NewRequest(http.MethodPost, "/v1/cms/articles", strings.NewReader(`{"title":"Novo Artigo","content":"Conteudo","type":"guide"}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/cms/articles", strings.NewReader(`{"title":"Novo Artigo","content":"<p>Conteudo</p><script>alert(1)</script>","type":"guide"}`))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 	res, err := app.Test(req)
 	if err != nil {
@@ -161,6 +163,9 @@ func TestHandlerCreateArticle(t *testing.T) {
 	}
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+	if created.Content != "<p>Conteudo</p>" {
+		t.Fatalf("expected sanitized content, got %q", created.Content)
 	}
 }
 
@@ -207,6 +212,30 @@ func TestHandlerUpdateArticle(t *testing.T) {
 	}
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+}
+
+func TestHandlerRejectsPartnerUpdateToPublishedArticle(t *testing.T) {
+	articleID := uuid.New()
+	userID := uuid.New()
+	handler := NewHandler(NewService(&mockRepository{
+		getArticleByIDFn: func(context.Context, pgtype.UUID) (queries.Article, error) {
+			return queries.Article{ID: pgtype.UUID{Bytes: [16]byte(articleID), Valid: true}, Title: "Published", Content: "Content", Type: "guide", Status: "published", AuthorID: pgtype.UUID{Bytes: [16]byte(userID), Valid: true}}, nil
+		},
+	}))
+	app := fiber.New(fiber.Config{ErrorHandler: apierror.Handler})
+	app.Patch("/v1/cms/articles/:id", func(c *fiber.Ctx) error {
+		c.Locals("auth_user", appauth.AuthenticatedUser{ID: userID.String(), Role: "cms_partner"})
+		return handler.UpdateArticle(c)
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/v1/cms/articles/"+articleID.String(), strings.NewReader(`{"title":"Changed","content":"Changed","type":"guide"}`))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", res.StatusCode)
 	}
 }
 

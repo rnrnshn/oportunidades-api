@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rnrnshn/oportunidades-api/pkg/db/queries"
+	"github.com/rnrnshn/oportunidades-api/pkg/htmlsanitize"
 )
 
 const (
@@ -129,7 +130,7 @@ func mapArticle(item queries.Article) (ArticleItem, error) {
 		Slug:           item.Slug,
 		Title:          item.Title,
 		Excerpt:        textValue(item.Excerpt),
-		Content:        item.Content,
+		Content:        htmlsanitize.Article(item.Content),
 		ContentJSON:    parseJSON(item.ContentJson),
 		CoverImageURL:  textValue(item.CoverImageUrl),
 		Type:           item.Type,
