@@ -97,7 +97,7 @@ tar -xzf "$archive" -C "$stage"
 printf '%s\n' "$revision" > "$stage/REVISION"
 
 if [ "$service" = "api" ]; then
-	compose run --rm -e BACKUP_ONCE=1 backup
+	compose run --rm -e BACKUP_ONCE=1 -e SUPABASE_URL= -e SUPABASE_SERVICE_ROLE_KEY= backup
 fi
 
 mv "$app" "$previous"
